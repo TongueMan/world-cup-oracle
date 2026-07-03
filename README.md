@@ -1,167 +1,174 @@
 # World Cup Oracle
 
-> 理性模型与象征推理融合的世界杯冠军预测 Agent
+World Cup Oracle 是一个面向 2026 世界杯的冠军预测与赛程数据 Agent 项目。项目目标不是只给出一个“冠军名单”，而是把赛程数据、球队基础强度、叙事因素、象征推理和多 Agent 辩论组织成一套可运行、可解释、可扩展的预测系统。
 
-World Cup Oracle 是一个融合 **理性预测 × 叙事感知 × 象征推理** 三轨道的世界杯冠军预测系统。通过多 Agent 辩论机制推演小组赛到决赛完整赛程，预测冠军并以可视化方式解释推理过程。
+当前仓库已经完成了前后端骨架、预测流水线雏形、Bing 体育数据同步、PostgreSQL 持久化、React 数据看板和 Docker Compose 本地部署。项目仍处在迭代阶段，部分 Agent 编排和真实数据校验策略还会继续增强。
+
+## 当前进展
+
+已完成或基本可用：
+
+- FastAPI 后端服务，提供健康检查、预测、赛程、球队、小组、淘汰赛、知识库、Agent 等 API 路由。
+- 48 队世界杯预测引擎雏形，支持小组赛、淘汰赛、冠军概率、比赛预测和推理产物输出。
+- 基础预测模型，包括球队强度特征、Poisson/比分模型、置信度和蒙特卡洛模拟。
+- 叙事与象征推理模块，包括 narrative、tarot、iching、astrology、upset signal 等独立组件。
+- Agent 辩论与评审骨架，包括数据、预测、叙事、象征、推理和 judge 相关模块。
+- Bing 体育世界杯数据同步，包含赛程、淘汰赛、排名、球员统计等结构化数据接口。
+- PostgreSQL 仓储层，用于保存同步数据、预测缓存和运行产物。
+- React + Vite + TypeScript 前端，当前重点是世界杯赛程/赛果指挥舱：比赛、淘汰赛、排名、统计信息和同步状态。
+- Docker Compose，包含 Postgres、API、前端 Nginx 三个服务。
+- 单元测试和集成测试目录，覆盖预测、赛程、API、schema、符号稳定性等核心路径。
+
+仍在完善：
+
+- 多 Agent 工作流的完整自动编排。
+- LLM Agent 的提示词、工具调用和结果评审策略。
+- 真实数据源的稳定性、异常恢复和数据质量门禁。
+- 前端从“赛程数据看板”扩展到完整“预测解释与 Agent 辩论工作台”。
 
 ## 技术栈
 
-| 层级 | 技术选择 |
+| 模块 | 技术 |
 | --- | --- |
-| 后端 | Python 3.10+ / FastAPI / Pydantic v2 / NumPy |
-| 前端 | React 19 + Vite + TypeScript + Tailwind CSS + ECharts |
-| 数据格式 | YAML (配置) / JSON (数据 fixtures & artifacts) |
-| 包管理 | pip (pyproject.toml) / npm |
-| 环境管理 | Conda |
-
-## 环境准备
-
-### Python 环境
-
-项目使用 Conda 环境 `llm_eval`：
-
-```bash
-# 方式一：激活 conda 环境
-conda activate llm_eval
-
-# 方式二：直接使用完整路径（推荐，避免环境切换问题）
-set PYTHON=C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe
-```
-
-安装 Python 依赖：
-
-```bash
-C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m pip install -e ".[dev]"
-```
-
-### 前端环境
-
-> **注意：** 在 Windows PowerShell 中，请使用 `npm.cmd` 而非 `npm`，否则可能无法正确执行。
-
-```bash
-cd frontend
-npm.cmd install
-```
-
-## 快速开始
-
-### 1. 运行预测流水线
-
-```bash
-# 使用 conda 环境
-conda activate llm_eval
-python -m scripts.run_prediction --seed 42
-
-# 或使用完整路径
-C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m scripts.run_prediction --seed 42
-```
-
-预测结果将输出到 `outputs/predictions/` 和 `outputs/reports/`。
-
-### 2. 启动后端 API
-
-```bash
-conda activate llm_eval
-python -m uvicorn wcpa.api.server:app --reload --host 127.0.0.1 --port 8000
-
-# 或使用完整路径
-C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m uvicorn wcpa.api.server:app --reload --host 127.0.0.1 --port 8000
-```
-
-### 3. 启动前端
-
-```bash
-cd frontend
-npm.cmd run dev
-```
-
-前端默认运行在 `http://localhost:5173`。
+| 后端 | Python 3.10+ / FastAPI / Pydantic v2 / NumPy / psycopg |
+| 前端 | React 19 / Vite / TypeScript / Tailwind CSS / ECharts |
+| 数据 | YAML 配置 / JSON fixtures / PostgreSQL |
+| 运行 | Conda 或 pip / npm / Docker Compose |
+| LLM | OpenAI-compatible API，默认示例为 DeepSeek |
 
 ## 目录结构
 
 ```text
-world-cup-predictor-agent/
-├── README.md                    # 本文件
-├── pyproject.toml               # Python 项目配置（包名 wcpa，映射到 backend/）
-├── .env.example                 # 环境变量模板
-├── .gitignore
-├── 世界杯冠军预测Agent项目提示词.md  # 项目设计提示词文档
-│
-├── config/                      # 配置文件（赛制、权重、规则等）
-│   ├── app.yml                  # 应用全局配置
-│   ├── tournament-2026.yml      # 2026 世界杯赛制
-│   ├── model-weights.yml        # 球队评分权重 & 三轨融合权重
-│   ├── narrative-rules.yml      # 叙事感知规则
-│   ├── symbolic-rules.yml       # 象征推理规则（塔罗/卦象/星象）
-│   ├── debate-rules.yml         # 多 Agent 辩论规则
-│   ├── simulation.yml           # 蒙特卡洛模拟参数
-│   └── data-sources.yml         # 数据源配置
-│
-├── data/
-│   ├── raw/                     # 原始采集数据（算法不直接读取）
-│   ├── normalized/              # 清洗后的标准数据
-│   ├── fixtures/                # 示例数据（MVP 使用）
-│   │   ├── teams.sample.json    # 16 支球队数据
-│   │   ├── matches.sample.json  # 24 场小组赛
-│   │   ├── narratives.sample.json # 16 队叙事画像
-│   │   ├── tarot-cards.sample.json  # 塔罗牌义
-│   │   ├── iching.sample.json   # 易经卦象
-│   │   └── astrology-rules.sample.json # 星象规则
-│   ├── cache/                   # 外部 API 缓存
-│   └── artifacts/               # 中间结构化产物
-│
-├── backend/                     # Python 后端代码（包名 wcpa）
-│   ├── __init__.py
-│   ├── shared/                  # 通用类型、常量、工具
-│   ├── schemas/                 # Pydantic 模型
-│   ├── data/                    # 数据采集与标准化
-│   ├── features/                # 特征构造
-│   ├── prediction/              # 理性预测（Poisson/Elo/评分）
-│   ├── simulation/              # 赛程推演（小组/淘汰赛/蒙特卡洛）
-│   ├── narrative/               # 叙事感知引擎
-│   ├── symbolic/                # 象征推理引擎（塔罗/卦象/星象）
-│   ├── debate/                  # 多 Agent 辩论与裁决
-│   ├── agents/                  # Agent 编排
-│   ├── reasoning/               # 推理链与解释生成
-│   ├── report/                  # 报告生成
-│   └── api/                     # FastAPI 服务
-│
-├── scripts/                     # 命令行入口脚本
-│   └── run_prediction.py        # 预测流水线入口
-│
-├── frontend/                    # React 前端（Vite + TS）
-│   ├── src/
-│   ├── package.json
-│   └── vite.config.ts
-│
-├── outputs/                     # 运行结果输出
-│   ├── predictions/             # 预测 JSON
-│   ├── reports/                 # Markdown/HTML 报告
-│   └── screenshots/             # 页面截图
-│
-└── docs/                        # 项目文档
-    ├── README.md                # 文档索引
-    ├── architecture.md          # 分层架构说明
-    ├── data-contracts.md        # 数据 schema 与契约
-    ├── product-requirements.md  # 产品需求
-    ├── data-sources.md          # 数据源说明
-    ├── model-design.md          # 模型设计
-    ├── agent-workflow.md        # Agent 工作流
-    ├── frontend-design.md       # 前端设计
-    └── evaluation.md             # 验收标准与测试
+backend/
+  scripts/              # 数据同步、预测运行、报告生成等命令
+  tests/                # 单元测试与集成测试
+  wcpa/
+    agents/             # Agent 接口、工具与辩论相关逻辑
+    api/                # FastAPI 应用与路由
+    data/               # 数据源、标准化、仓储层
+    debate/             # Agent 观点汇总与 judge
+    features/           # 球队特征构建
+    narrative/          # 叙事评分
+    prediction/         # 比赛预测模型
+    reasoning/          # 解释与推理轨迹
+    simulation/         # 小组赛、淘汰赛、冠军模拟
+    symbolic/           # 塔罗、易经、占星等象征信号
+    worldcup/           # 世界杯赛程数据服务
+config/                 # 模型权重、规则、数据源、赛事配置
+data/
+  fixtures/             # 样例数据
+  normalized/           # 标准化样例和当前真实数据快照
+frontend/               # React 前端
 ```
 
-## 核心概念
+## 本地运行
 
-- **三轨道融合**：理性预测（默认 70%）+ 叙事感知（20%）+ 象征推理（10%），支持专业/平衡/爆冷/娱乐四种模式
-- **多 Agent 辩论**：Data Analyst、Tactical Analyst、Narrative、Tarot、I-Ching、Astrology Agent 各自给出观点，由 Judge Agent 裁决
-- **可复现性**：同一份输入数据、同一套参数和同一随机种子得到一致输出
-- **可解释性**：每场比赛都有预测比分、胜平负概率、置信度、爆冷指数和推理依据
+复制环境变量模板：
 
-## 配置说明
+```powershell
+Copy-Item .env.example .env
+```
 
-所有可变参数位于 `config/` 目录，详见 [docs/](docs/) 下各文档。
+安装后端依赖：
 
-## 许可证
+```powershell
+$env:PYTHONPATH = "backend"
+C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m pip install -e ".[dev]"
+```
 
-MIT
+启动后端：
+
+```powershell
+$env:PYTHONPATH = "backend"
+C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m uvicorn wcpa.api.server:app --reload --host 127.0.0.1 --port 8000
+```
+
+安装并启动前端：
+
+```powershell
+cd frontend
+npm.cmd install
+npm.cmd run dev
+```
+
+前端默认地址：
+
+```text
+http://localhost:5173
+```
+
+## Docker Compose
+
+也可以直接启动完整本地环境：
+
+```bash
+docker compose up --build
+```
+
+默认服务：
+
+- API: `http://localhost:8000`
+- 前端: `http://localhost:8080`
+- PostgreSQL: `localhost:5432`
+
+## 常用命令
+
+运行预测流水线：
+
+```powershell
+$env:PYTHONPATH = "backend"
+C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m scripts.run_prediction --seed 42
+```
+
+同步世界杯数据：
+
+```powershell
+$env:PYTHONPATH = "backend"
+C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m scripts.sync_real_data
+```
+
+运行测试：
+
+```powershell
+$env:PYTHONPATH = "backend"
+C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m pytest
+```
+
+前端构建：
+
+```powershell
+cd frontend
+npm.cmd run build
+```
+
+## 环境变量
+
+`.env.example` 保留了项目需要的变量名和安全默认值。真实密钥只应放在本地 `.env` 中，不要提交到仓库。
+
+主要变量：
+
+- `WCPA_DATABASE_URL`: PostgreSQL 连接地址。
+- `WCPA_BING_SCHEDULE_URL`: Bing 体育世界杯赛程页面地址。
+- `WCPA_ENABLE_WEB_COLLECTORS`: 是否启用网页数据采集。
+- `WCPA_ENABLE_LLM_AGENTS`: 是否启用 LLM Agent。
+- `WCPA_LLM_BASE_URL`: OpenAI-compatible API 地址。
+- `WCPA_LLM_MODEL`: LLM 模型名。
+- `WCPA_LLM_API_KEY`: 本地私有 API Key。
+
+## 数据与提交策略
+
+仓库提交源码、配置、样例数据和必要的前端静态资源。以下内容默认不提交：
+
+- `.env`
+- `outputs/`
+- `data/cache/`
+- `data/knowledge/`
+- `frontend/dist/`
+- `docs/`
+- `开源数据/`
+
+这样可以避免把本地密钥、抓取缓存、构建产物和内部文档误传到公开仓库。
+
+## 项目状态
+
+当前版本适合用于本地演示、继续开发和验证整体架构。预测结果依赖当前数据质量、模型权重和规则配置，不应被视为正式投注、投资或任何现实决策建议。
