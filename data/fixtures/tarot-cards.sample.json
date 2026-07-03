@@ -1,0 +1,12 @@
+[
+  {"name":"Strength","valence":"stable","keywords":["坚韧","防守稳固"],"upset_risk":0.2},
+  {"name":"Tower","valence":"volatile","keywords":["崩盘风险","突发变故"],"upset_risk":0.8},
+  {"name":"Sun","valence":"stable","keywords":["光明","主导"],"upset_risk":0.1},
+  {"name":"Moon","valence":"volatile","keywords":["不确定","逆转"],"upset_risk":0.6},
+  {"name":"Chariot","valence":"stable","keywords":["冲击力","胜利推进"],"upset_risk":0.3},
+  {"name":"Temperance","valence":"stable","keywords":["平衡","稳健"],"upset_risk":0.2},
+  {"name":"Death","valence":"volatile","keywords":["转折","重生"],"upset_risk":0.7},
+  {"name":"Star","valence":"stable","keywords":["希望","指引"],"upset_risk":0.2},
+  {"name":"Devil","valence":"volatile","keywords":["失控","贪进"],"upset_risk":0.6},
+  {"name":"Emperor","valence":"stable","keywords":["统治","秩序"],"upset_risk":0.3}
+]

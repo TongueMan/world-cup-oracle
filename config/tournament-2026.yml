@@ -1,0 +1,36 @@
+edition: "2026"
+total_teams: 48
+num_groups: 12
+group_size: 4
+group_stage_format: "single_round_robin"
+
+points:
+  win: 3
+  draw: 1
+  loss: 0
+
+tiebreakers:
+  - "points"
+  - "goal_difference"
+  - "goals_for"
+  - "head_to_head"        # TODO: MVP 跳过
+  - "fair_play_or_seed"   # MVP 使用 seed 兜底
+
+# MVP 子集配置 (实际 fixture 使用)
+mvp:
+  enabled: true
+  num_groups: 4
+  group_size: 4
+  knockout_entry: 8   # 每组 top 2 = 8 队
+  knockout_rounds: ["QF", "SF", "Final"]
+
+knockout:
+  entry_size: 32
+  qualified_from_groups:
+    top_two: 24
+    best_thirds: 8
+  rounds: ["R32", "R16", "QF", "SF", "Final"]
+  allow_draw: false
+  tiebreaker:
+    extra_time: true
+    penalties: true

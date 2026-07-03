@@ -1,0 +1,434 @@
+[
+  {
+    "team_id": "MEX",
+    "name": "墨西哥",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=墨西哥 vs 南非&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456904&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4781&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4736&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_1004\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "墨西哥",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4781"
+  },
+  {
+    "team_id": "RSA",
+    "name": "南非",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=墨西哥 vs 南非&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456904&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4781&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4736&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_1004\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "南非",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4736"
+  },
+  {
+    "team_id": "KOR",
+    "name": "韩国",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=韩国 vs 捷克&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456906&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4735&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4714&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2401\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "韩国",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4735"
+  },
+  {
+    "team_id": "BING_3C342080",
+    "name": "捷克",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=韩国 vs 捷克&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456906&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4735&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4714&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2401\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "捷克",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4714"
+  },
+  {
+    "team_id": "CAN",
+    "name": "加拿大",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=加拿大 vs 波黑&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456916&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4752&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4479&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2294\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "加拿大",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4752"
+  },
+  {
+    "team_id": "BING_B3ABE584",
+    "name": "波黑",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=加拿大 vs 波黑&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456916&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4752&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4479&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2294\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "波黑",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4479"
+  },
+  {
+    "team_id": "USA",
+    "name": "美国",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=美国 vs 巴拉圭&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456940&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4724&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4789&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_52183\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "美国",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4724"
+  },
+  {
+    "team_id": "PAR",
+    "name": "巴拉圭",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=美国 vs 巴拉圭&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456940&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4724&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4789&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_52183\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "巴拉圭",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4789"
+  },
+  {
+    "team_id": "QAT",
+    "name": "卡塔尔",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=卡塔尔 vs 瑞士&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456918&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4792&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4699&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_15672\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "卡塔尔",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4792"
+  },
+  {
+    "team_id": "SUI",
+    "name": "瑞士",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=卡塔尔 vs 瑞士&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456918&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4792&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4699&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_15672\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "瑞士",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4699"
+  },
+  {
+    "team_id": "BRA",
+    "name": "巴西",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=巴西 vs 摩洛哥&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456928&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4748&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4778&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_1981\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "巴西",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4748"
+  },
+  {
+    "team_id": "MAR",
+    "name": "摩洛哥",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=巴西 vs 摩洛哥&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456928&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4748&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4778&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_1981\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "摩洛哥",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4778"
+  },
+  {
+    "team_id": "HAI",
+    "name": "海地",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=海地 vs 苏格兰&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456930&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_7229&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4695&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2379\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "海地",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_7229"
+  },
+  {
+    "team_id": "SCO",
+    "name": "苏格兰",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=海地 vs 苏格兰&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456930&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_7229&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4695&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2379\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "苏格兰",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4695"
+  },
+  {
+    "team_id": "AUS",
+    "name": "澳大利亚",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=澳大利亚 vs 土耳其&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456942&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4741&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4700&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2293\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "澳大利亚",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4741"
+  },
+  {
+    "team_id": "TUR",
+    "name": "土耳其",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=澳大利亚 vs 土耳其&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456942&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4741&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4700&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2293\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "土耳其",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4700"
+  },
+  {
+    "team_id": "NED",
+    "name": "荷兰",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=荷兰 vs 日本&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456968&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4705&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4770&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_6650\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "荷兰",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4705"
+  },
+  {
+    "team_id": "JPN",
+    "name": "日本",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=荷兰 vs 日本&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456968&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4705&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4770&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_6650\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "日本",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4770"
+  },
+  {
+    "team_id": "SWE",
+    "name": "瑞典",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=瑞典 vs 突尼斯&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456970&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4688&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4729&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_16526\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "瑞典",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4688"
+  },
+  {
+    "team_id": "BING_EF81A2F5",
+    "name": "突尼斯",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=瑞典 vs 突尼斯&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456970&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4688&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4729&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_16526\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "突尼斯",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4729"
+  },
+  {
+    "team_id": "GER",
+    "name": "德国",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=德国 vs 库拉索岛&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457070&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4711&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_55827&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2402\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "德国",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4711"
+  },
+  {
+    "team_id": "BING_728D8804",
+    "name": "库拉索岛",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=德国 vs 库拉索岛&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457070&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4711&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_55827&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2402\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "库拉索岛",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_55827"
+  },
+  {
+    "team_id": "BING_B33D6264",
+    "name": "象牙海岸",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=象牙海岸 vs 厄瓜多尔&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457072&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4768&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4757&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_1833\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "象牙海岸",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4768"
+  },
+  {
+    "team_id": "BING_F4CED5B0",
+    "name": "厄瓜多尔",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=象牙海岸 vs 厄瓜多尔&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457072&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4768&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4757&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_1833\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "厄瓜多尔",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4757"
+  },
+  {
+    "team_id": "BEL",
+    "name": "比利时",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=比利时 vs 埃及&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456982&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4717&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4758&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2291\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "比利时",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4717"
+  },
+  {
+    "team_id": "EGY",
+    "name": "埃及",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=比利时 vs 埃及&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456982&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4717&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4758&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2291\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "埃及",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4758"
+  },
+  {
+    "team_id": "IRN",
+    "name": "伊朗",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=伊朗 vs 新西兰&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456984&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4766&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4784&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_52183\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "伊朗",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4766"
+  },
+  {
+    "team_id": "NZL",
+    "name": "新西兰",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=伊朗 vs 新西兰&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456984&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4766&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4784&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_52183\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "新西兰",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4784"
+  },
+  {
+    "team_id": "ESP",
+    "name": "西班牙",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=西班牙 vs 佛得角&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456994&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4698&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4753&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_20343\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "西班牙",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4698"
+  },
+  {
+    "team_id": "CPV",
+    "name": "佛得角",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=西班牙 vs 佛得角&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456994&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4698&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4753&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_20343\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "佛得角",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4753"
+  },
+  {
+    "team_id": "KSA",
+    "name": "沙特阿拉伯",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=沙特阿拉伯 vs 乌拉圭&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456996&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4834&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4725&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_21306\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "沙特阿拉伯",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4834"
+  },
+  {
+    "team_id": "URU",
+    "name": "乌拉圭",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=沙特阿拉伯 vs 乌拉圭&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66456996&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4834&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4725&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_21306\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "乌拉圭",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4725"
+  },
+  {
+    "team_id": "FRA",
+    "name": "法国",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=法国 vs 塞内加尔&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457006&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4481&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4739&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_1981\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "法国",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4481"
+  },
+  {
+    "team_id": "SEN",
+    "name": "塞内加尔",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=法国 vs 塞内加尔&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457006&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4481&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4739&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_1981\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "塞内加尔",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4739"
+  },
+  {
+    "team_id": "BING_C28A6772",
+    "name": "伊拉克",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=伊拉克 vs 挪威&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457008&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4767&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4475&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2379\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "伊拉克",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4767"
+  },
+  {
+    "team_id": "NOR",
+    "name": "挪威",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=伊拉克 vs 挪威&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457008&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4767&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4475&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2379\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "挪威",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4475"
+  },
+  {
+    "team_id": "ARG",
+    "name": "阿根廷",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=阿根廷 vs 阿尔及利亚&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457018&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4819&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4691&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_8189\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "阿根廷",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4819"
+  },
+  {
+    "team_id": "BING_79BEFFF6",
+    "name": "阿尔及利亚",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=阿根廷 vs 阿尔及利亚&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457018&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4819&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4691&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_8189\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "阿尔及利亚",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4691"
+  },
+  {
+    "team_id": "AUT",
+    "name": "奥地利",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=奥地利 vs 约旦&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457020&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4718&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4771&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_15672\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "奥地利",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4718"
+  },
+  {
+    "team_id": "BING_B2F993D7",
+    "name": "约旦",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=奥地利 vs 约旦&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457020&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4718&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4771&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_15672\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "约旦",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4771"
+  },
+  {
+    "team_id": "POR",
+    "name": "葡萄牙",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=葡萄牙 vs 刚果民主共和国&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457030&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4704&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4823&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2402\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "葡萄牙",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4704"
+  },
+  {
+    "team_id": "BING_C9E1EEDB",
+    "name": "刚果民主共和国",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=葡萄牙 vs 刚果民主共和国&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457030&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4704&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4823&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2402\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "刚果民主共和国",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4823"
+  },
+  {
+    "team_id": "BING_596B95E4",
+    "name": "乌兹别克斯坦",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=乌兹别克斯坦 vs 哥伦比亚&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457032&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4723&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4820&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_1004\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "乌兹别克斯坦",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4723"
+  },
+  {
+    "team_id": "COL",
+    "name": "哥伦比亚",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=乌兹别克斯坦 vs 哥伦比亚&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457032&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4723&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4820&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_1004\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "哥伦比亚",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4820"
+  },
+  {
+    "team_id": "ENG",
+    "name": "英格兰",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=英格兰 vs 克罗地亚&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457042&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4713&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4715&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_6650\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "英格兰",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4713"
+  },
+  {
+    "team_id": "BING_36C835EB",
+    "name": "克罗地亚",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=英格兰 vs 克罗地亚&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457042&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4713&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_4715&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_6650\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "克罗地亚",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4715"
+  },
+  {
+    "team_id": "GHA",
+    "name": "加纳",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=加纳 vs 巴拿马&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457044&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4764&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_5164&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2294\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "加纳",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_4764"
+  },
+  {
+    "team_id": "BING_EB95B9EC",
+    "name": "巴拿马",
+    "source_key": "bing_sports_worldcup",
+    "source_url": "https://www.bing.com/sportsdetails?q=加纳 vs 巴拿马&gameid=SportRadar_Soccer_InternationalWorldCup_2026_Game_66457044&league=Soccer_InternationalWorldCup&scenario=GameCenter&intent=Game&iscelebratedgame=False&sport=Soccer&TimezoneId=China Standard Time&IANATimezoneId=Asia/Shanghai&ISOTimezoneKey=CST&seasonyear=2026&team=SportRadar_Soccer_InternationalWorldCup_2026_Team_4764&team2=SportRadar_Soccer_InternationalWorldCup_2026_Team_5164&venueid={\"id\":\"SportRadar_Soccer_InternationalWorldCup_2026_Venue_2294\"}:version-1&segment=sports&isl2=true&form=ARENL2&",
+    "verified": true,
+    "raw_name": "巴拿马",
+    "sport_radar_id": "SportRadar_Soccer_InternationalWorldCup_2026_Team_5164"
+  }
+]

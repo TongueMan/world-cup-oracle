@@ -1,0 +1,47 @@
+tarot:
+  deck_size: 78
+  draw_per_side: 3
+  # 完整牌义在 data/fixtures/tarot-cards.sample.json
+  keyword_mapping:
+    Strength: { valence: "stable", keywords: ["坚韧", "防守稳固"] }
+    Tower: { valence: "volatile", keywords: ["崩盘风险", "突发变故"] }
+    Sun: { valence: "stable", keywords: ["光明", "主导" ] }
+    Moon: { valence: "volatile", keywords: ["不确定", "逆转"] }
+    Chariot: { valence: "stable", keywords: ["冲击力", "胜利推进"] }
+    Temperance: { valence: "stable", keywords: ["平衡", "稳健"] }
+    Death: { valence: "volatile", keywords: ["转折", "重生"] }
+    Star: { valence: "stable", keywords: ["希望", "指引"] }
+    Devil: { valence: "volatile", keywords: ["失控", "贪进"] }
+    Emperor: { valence: "stable", keywords: ["统治", "秩序"] }
+
+iching:
+  hexagram_count: 64
+  keyword_mapping:
+    坎: { keywords: ["险局", "僵持", "加时风险"], upset_risk: 0.7 }
+    乾: { keywords: ["强势", "主导"], upset_risk: 0.2 }
+    坤: { keywords: ["防守", "韧性"], upset_risk: 0.3 }
+    震: { keywords: ["突变", "冲击"], upset_risk: 0.6 }
+    巽: { keywords: ["渗透", "灵活"], upset_risk: 0.4 }
+    离: { keywords: ["激烈", "明亮"], upset_risk: 0.5 }
+    艮: { keywords: ["静止", "僵持"], upset_risk: 0.5 }
+    兑: { keywords: ["喜悦", "顺畅"], upset_risk: 0.3 }
+
+astrology:
+  elements: ["fire", "earth", "air", "water"]
+  energy_keywords:
+    fire: ["快节奏", "进攻性强"]
+    earth: ["稳健", "防守反击"]
+    air: ["灵活", "战术变化"]
+    water: ["情绪波动", "直觉性"]
+
+fortune:
+  weights:
+    historical_honor: 0.30
+    winning_streak: 0.25
+    leader_factor: 0.20
+    schedule_difficulty: 0.15
+    fan_momentum: 0.10
+
+constraints:
+  max_symbolic_weight: 0.10
+  must_be_reproducible: true

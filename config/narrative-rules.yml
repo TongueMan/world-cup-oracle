@@ -1,0 +1,19 @@
+narrative_score_weights:
+  media_heat_score: 0.20
+  morale_score: 0.20
+  dark_horse_score: 0.20
+  destiny_score: 0.15
+  fan_momentum_score: 0.15
+  pressure_penalty: -0.10
+
+tags:
+  - { key: "defending_champion_pressure", description: "卫冕冠军压力" }
+  - { key: "core_star_last_dance", description: "核心球星最后一舞" }
+  - { key: "dark_horse_candidate", description: "黑马候选" }
+  - { key: "host_nation_boost", description: "东道主加成" }
+  - { key: "comeback_narrative", description: "王者归来" }
+
+thresholds:
+  dark_horse_score_min: 0.60
+  pressure_high: 0.75
+  morale_low: 0.40

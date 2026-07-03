@@ -1,0 +1,8 @@
+sources:
+  - { key: "fifa_schedule", type: "web_scrape", url: "https://www.fifa.com/fifaplus/en/tournaments/mens/worldcup", credibility: "A", enabled: false }
+  - { key: "fifa_ranking", type: "csv_import", credibility: "A", enabled: false }
+  - { key: "elo_ratings", type: "web_scrape", url: "https://www.eloratings.net", credibility: "B", enabled: false }
+  - { key: "football_data", type: "api", credibility: "B", enabled: false }
+  - { key: "wikipedia", type: "web_scrape", credibility: "B", enabled: false }
+
+fallback_strategy: "use_fixtures"

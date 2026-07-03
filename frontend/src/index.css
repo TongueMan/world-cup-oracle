@@ -1,0 +1,222 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #07140b;
+}
+
+body {
+  margin: 0;
+  background: #07140b;
+  color: #f8fff6;
+  font-family:
+    Inter,
+    "Microsoft YaHei",
+    "PingFang SC",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.stadium-backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(3, 10, 5, 0.18), rgba(3, 10, 5, 0.92) 76%),
+    linear-gradient(90deg, rgba(7, 20, 11, 0.18), rgba(7, 20, 11, 0.74)),
+    url("/assets/stadium-oracle-hero.png") center top / cover no-repeat;
+}
+
+.hero-field {
+  position: relative;
+  background:
+    linear-gradient(90deg, rgba(5, 16, 8, 0.84), rgba(5, 16, 8, 0.5)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(4px);
+}
+
+.hero-field::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 28%;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(40, 151, 61, 0.28) 0 72px,
+      rgba(14, 103, 38, 0.28) 72px 144px
+    );
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.oracle-panel {
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035)),
+    rgba(8, 33, 15, 0.74);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(18px);
+}
+
+.oracle-panel-wide {
+  position: relative;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
+}
+
+.field-panel {
+  background:
+    linear-gradient(90deg, rgba(9, 61, 25, 0.78), rgba(12, 24, 12, 0.72)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(28, 137, 48, 0.2) 0 60px,
+      rgba(15, 94, 35, 0.2) 60px 120px
+    );
+}
+
+.football-icon,
+.football-mark,
+.football-spinner {
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  background:
+    radial-gradient(circle at 50% 50%, #111 0 16%, transparent 17%),
+    radial-gradient(circle at 28% 28%, #111 0 8%, transparent 9%),
+    radial-gradient(circle at 72% 28%, #111 0 8%, transparent 9%),
+    radial-gradient(circle at 30% 72%, #111 0 8%, transparent 9%),
+    radial-gradient(circle at 70% 72%, #111 0 8%, transparent 9%),
+    #fff;
+  box-shadow: 0 0 26px rgba(255, 255, 255, 0.2);
+}
+
+.football-icon {
+  width: 48px;
+  height: 48px;
+}
+
+.football-spinner {
+  width: 54px;
+  height: 54px;
+  animation: ball-spin 1.3s linear infinite;
+}
+
+.pitch-board {
+  position: relative;
+  min-height: 340px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 30px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.14) 1px, transparent 1px),
+    repeating-linear-gradient(
+      90deg,
+      rgba(44, 161, 60, 0.92) 0 56px,
+      rgba(26, 126, 48, 0.92) 56px 112px
+    );
+  background-size: 72px 100%, auto;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+.pitch-board::before {
+  content: "";
+  position: absolute;
+  inset: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.62);
+  border-radius: 18px;
+}
+
+.pitch-line {
+  position: absolute;
+  pointer-events: none;
+}
+
+.center-circle {
+  left: 50%;
+  top: 50%;
+  width: 118px;
+  height: 118px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255, 255, 255, 0.62);
+  border-radius: 999px;
+}
+
+.halfway {
+  left: 50%;
+  top: 24px;
+  bottom: 24px;
+  width: 2px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.goal-box {
+  position: absolute;
+  top: 50%;
+  width: 72px;
+  height: 150px;
+  transform: translateY(-50%);
+  border: 2px solid rgba(255, 255, 255, 0.62);
+}
+
+.goal-box.left {
+  left: 24px;
+  border-left: 0;
+}
+
+.goal-box.right {
+  right: 24px;
+  border-right: 0;
+}
+
+.football-mark {
+  position: absolute;
+  left: calc(50% - 28px);
+  top: calc(50% - 28px);
+  width: 56px;
+  height: 56px;
+  z-index: 2;
+}
+
+@keyframes ball-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(246, 200, 69, 0.56);
+  border: 2px solid rgba(7, 20, 11, 0.9);
+  border-radius: 999px;
+}

@@ -1,0 +1,21 @@
+[
+  {"team_id":"BRA","name":"Brazil","confederation":"CONMEBOL","fifa_rank":5,"elo_rating":1928,"recent_form_score":0.82,"attack_score":0.85,"defense_score":0.72,"squad_health_score":0.88,"data_quality":"A"},
+  {"team_id":"ARG","name":"Argentina","confederation":"CONMEBOL","fifa_rank":1,"elo_rating":2055,"recent_form_score":0.88,"attack_score":0.87,"defense_score":0.84,"squad_health_score":0.90,"data_quality":"A"},
+  {"team_id":"MEX","name":"Mexico","confederation":"CONCACAF","fifa_rank":17,"elo_rating":1710,"recent_form_score":0.62,"attack_score":0.65,"defense_score":0.63,"squad_health_score":0.82,"data_quality":"B"},
+  {"team_id":"JPN","name":"Japan","confederation":"AFC","fifa_rank":18,"elo_rating":1695,"recent_form_score":0.68,"attack_score":0.70,"defense_score":0.66,"squad_health_score":0.85,"data_quality":"A"},
+
+  {"team_id":"FRA","name":"France","confederation":"UEFA","fifa_rank":2,"elo_rating":2031,"recent_form_score":0.85,"attack_score":0.88,"defense_score":0.82,"squad_health_score":0.87,"data_quality":"A"},
+  {"team_id":"ENG","name":"England","confederation":"UEFA","fifa_rank":4,"elo_rating":1960,"recent_form_score":0.79,"attack_score":0.82,"defense_score":0.75,"squad_health_score":0.85,"data_quality":"A"},
+  {"team_id":"USA","name":"United States","confederation":"CONCACAF","fifa_rank":16,"elo_rating":1715,"recent_form_score":0.60,"attack_score":0.62,"defense_score":0.65,"squad_health_score":0.80,"data_quality":"B"},
+  {"team_id":"KOR","name":"South Korea","confederation":"AFC","fifa_rank":23,"elo_rating":1648,"recent_form_score":0.65,"attack_score":0.68,"defense_score":0.60,"squad_health_score":0.83,"data_quality":"B"},
+
+  {"team_id":"GER","name":"Germany","confederation":"UEFA","fifa_rank":9,"elo_rating":1885,"recent_form_score":0.75,"attack_score":0.80,"defense_score":0.73,"squad_health_score":0.84,"data_quality":"A"},
+  {"team_id":"ESP","name":"Spain","confederation":"UEFA","fifa_rank":3,"elo_rating":1990,"recent_form_score":0.81,"attack_score":0.83,"defense_score":0.79,"squad_health_score":0.86,"data_quality":"A"},
+  {"team_id":"MAR","name":"Morocco","confederation":"CAF","fifa_rank":14,"elo_rating":1748,"recent_form_score":0.70,"attack_score":0.66,"defense_score":0.78,"squad_health_score":0.82,"data_quality":"B"},
+  {"team_id":"AUS","name":"Australia","confederation":"AFC","fifa_rank":27,"elo_rating":1612,"recent_form_score":0.58,"attack_score":0.60,"defense_score":0.58,"squad_health_score":0.80,"data_quality":"B"},
+
+  {"team_id":"POR","name":"Portugal","confederation":"UEFA","fifa_rank":6,"elo_rating":1920,"recent_form_score":0.80,"attack_score":0.84,"defense_score":0.76,"squad_health_score":0.85,"data_quality":"A"},
+  {"team_id":"NED","name":"Netherlands","confederation":"UEFA","fifa_rank":7,"elo_rating":1905,"recent_form_score":0.77,"attack_score":0.81,"defense_score":0.78,"squad_health_score":0.83,"data_quality":"A"},
+  {"team_id":"SEN","name":"Senegal","confederation":"CAF","fifa_rank":19,"elo_rating":1680,"recent_form_score":0.66,"attack_score":0.69,"defense_score":0.64,"squad_health_score":0.81,"data_quality":"B"},
+  {"team_id":"ECU","name":"Ecuador","confederation":"CONMEBOL","fifa_rank":32,"elo_rating":1575,"recent_form_score":0.61,"attack_score":0.63,"defense_score":0.62,"squad_health_score":0.79,"data_quality":"C"}
+]

@@ -1,0 +1,13 @@
+monte_carlo:
+  iterations: 1000
+  default_seed: 42
+  parallel_workers: 1   # MVP 单线程
+
+poisson:
+  max_goals: 10
+  lambda_clamp_min: 0.1
+  lambda_clamp_max: 5.0
+
+knockout_tiebreaker:
+  extra_time_goal_expectation_factor: 0.5
+  penalty_home_win_prob: 0.52

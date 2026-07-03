@@ -1,0 +1,13 @@
+app:
+  name: "World Cup Oracle"
+  edition: "2026"
+  default_mode: "balanced"
+  random_seed: 42
+  log_level: "INFO"
+
+paths:
+  config_dir: "config"
+  data_dir: "data"
+  fixtures_dir: "data/fixtures"
+  artifacts_dir: "data/artifacts"
+  outputs_dir: "outputs"

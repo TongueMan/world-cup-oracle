@@ -1,0 +1,29 @@
+[
+  {"match_id":"G-A-001","stage":"group","group":"A","home_team_id":"BRA","away_team_id":"ARG","kickoff_time":"2026-06-11T19:00:00Z","venue":"MetLife Stadium"},
+  {"match_id":"G-A-002","stage":"group","group":"A","home_team_id":"BRA","away_team_id":"MEX","kickoff_time":"2026-06-16T16:00:00Z","venue":"Estadio Azteca"},
+  {"match_id":"G-A-003","stage":"group","group":"A","home_team_id":"BRA","away_team_id":"JPN","kickoff_time":"2026-06-21T19:00:00Z","venue":"MetLife Stadium"},
+  {"match_id":"G-A-004","stage":"group","group":"A","home_team_id":"ARG","away_team_id":"MEX","kickoff_time":"2026-06-25T21:00:00Z","venue":"Estadio Azteca"},
+  {"match_id":"G-A-005","stage":"group","group":"A","home_team_id":"ARG","away_team_id":"JPN","kickoff_time":"2026-06-29T19:00:00Z","venue":"MetLife Stadium"},
+  {"match_id":"G-A-006","stage":"group","group":"A","home_team_id":"MEX","away_team_id":"JPN","kickoff_time":"2026-07-03T16:00:00Z","venue":"Estadio Azteca"},
+
+  {"match_id":"G-B-001","stage":"group","group":"B","home_team_id":"FRA","away_team_id":"ENG","kickoff_time":"2026-06-12T18:00:00Z","venue":"SoFi Stadium"},
+  {"match_id":"G-B-002","stage":"group","group":"B","home_team_id":"FRA","away_team_id":"USA","kickoff_time":"2026-06-17T20:00:00Z","venue":"AT&T Stadium"},
+  {"match_id":"G-B-003","stage":"group","group":"B","home_team_id":"FRA","away_team_id":"KOR","kickoff_time":"2026-06-22T18:00:00Z","venue":"SoFi Stadium"},
+  {"match_id":"G-B-004","stage":"group","group":"B","home_team_id":"ENG","away_team_id":"USA","kickoff_time":"2026-06-26T20:00:00Z","venue":"AT&T Stadium"},
+  {"match_id":"G-B-005","stage":"group","group":"B","home_team_id":"ENG","away_team_id":"KOR","kickoff_time":"2026-06-30T18:00:00Z","venue":"SoFi Stadium"},
+  {"match_id":"G-B-006","stage":"group","group":"B","home_team_id":"USA","away_team_id":"KOR","kickoff_time":"2026-07-04T20:00:00Z","venue":"AT&T Stadium"},
+
+  {"match_id":"G-C-001","stage":"group","group":"C","home_team_id":"GER","away_team_id":"ESP","kickoff_time":"2026-06-13T19:00:00Z","venue":"Mercedes-Benz Stadium"},
+  {"match_id":"G-C-002","stage":"group","group":"C","home_team_id":"GER","away_team_id":"MAR","kickoff_time":"2026-06-18T16:00:00Z","venue":"Hard Rock Stadium"},
+  {"match_id":"G-C-003","stage":"group","group":"C","home_team_id":"GER","away_team_id":"AUS","kickoff_time":"2026-06-23T19:00:00Z","venue":"Mercedes-Benz Stadium"},
+  {"match_id":"G-C-004","stage":"group","group":"C","home_team_id":"ESP","away_team_id":"MAR","kickoff_time":"2026-06-27T16:00:00Z","venue":"Hard Rock Stadium"},
+  {"match_id":"G-C-005","stage":"group","group":"C","home_team_id":"ESP","away_team_id":"AUS","kickoff_time":"2026-07-01T19:00:00Z","venue":"Mercedes-Benz Stadium"},
+  {"match_id":"G-C-006","stage":"group","group":"C","home_team_id":"MAR","away_team_id":"AUS","kickoff_time":"2026-07-05T16:00:00Z","venue":"Hard Rock Stadium"},
+
+  {"match_id":"G-D-001","stage":"group","group":"D","home_team_id":"POR","away_team_id":"NED","kickoff_time":"2026-06-14T20:00:00Z","venue":"Lincoln Financial Field"},
+  {"match_id":"G-D-002","stage":"group","group":"D","home_team_id":"POR","away_team_id":"SEN","kickoff_time":"2026-06-19T18:00:00Z","venue":"Levi's Stadium"},
+  {"match_id":"G-D-003","stage":"group","group":"D","home_team_id":"POR","away_team_id":"ECU","kickoff_time":"2026-06-24T20:00:00Z","venue":"Lincoln Financial Field"},
+  {"match_id":"G-D-004","stage":"group","group":"D","home_team_id":"NED","away_team_id":"SEN","kickoff_time":"2026-06-28T18:00:00Z","venue":"Levi's Stadium"},
+  {"match_id":"G-D-005","stage":"group","group":"D","home_team_id":"NED","away_team_id":"ECU","kickoff_time":"2026-07-02T20:00:00Z","venue":"Lincoln Financial Field"},
+  {"match_id":"G-D-006","stage":"group","group":"D","home_team_id":"SEN","away_team_id":"ECU","kickoff_time":"2026-07-06T18:00:00Z","venue":"Levi's Stadium"}
+]
