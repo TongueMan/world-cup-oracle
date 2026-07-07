@@ -126,8 +126,9 @@ class WorldCupDataService:
     def get_match_detail(self, match_id: str) -> dict[str, Any] | None:
         row = self.repository.load_worldcup_match(match_id)
         if row:
-            return row
-        return next((match for match in _read_json_list(MATCHES_FILE) if match.get("match_id") == match_id), None)
+            return _with_date_metadata(row)
+        match = next((match for match in _read_json_list(MATCHES_FILE) if match.get("match_id") == match_id), None)
+        return _with_date_metadata(match) if match else None
 
     def get_bracket(self) -> list[dict[str, Any]]:
         rows = self.repository.load_worldcup_bracket()
@@ -200,7 +201,12 @@ def normalize_bing_run(run: BingKnowledgeRun) -> dict[str, list[dict[str, Any]]]
         bracket = bracket_by_id.get(match_id, {})
         warnings: list[str] = []
         kickoff_label = row.get("kickoff_label") or bracket.get("date_label")
-        kickoff_time = _parse_kickoff_time(row.get("date_label"), row.get("kickoff_label"))
+        fetched_at = _parse_dt(row.get("fetched_at")) or run.fetched_at
+        kickoff_time = _parse_kickoff_time(
+            row.get("date_label"),
+            row.get("kickoff_label"),
+            fetched_at,
+        )
         if not kickoff_time and row.get("status") != "final":
             warnings.append("kickoff_time_unparsed")
         home_team_id = _normalize_team_id(row.get("home_name"), row.get("home_team_id"))
@@ -213,6 +219,9 @@ def normalize_bing_run(run: BingKnowledgeRun) -> dict[str, list[dict[str, Any]]]
             group_name=row.get("group"),
             kickoff_time=kickoff_time,
             kickoff_label=kickoff_label,
+            resolved_kickoff_date=kickoff_time.date().isoformat() if kickoff_time else None,
+            date_confidence="high" if kickoff_time else "low",
+            data_as_of=fetched_at,
             home_team_id=home_team_id,
             away_team_id=away_team_id,
             winner_team_id=winner_team_id,
@@ -231,7 +240,7 @@ def normalize_bing_run(run: BingKnowledgeRun) -> dict[str, list[dict[str, Any]]]
             raw_content_hash=schedule_hash or _hash_text(row.get("raw_label", "")),
             parser_version=PARSER_VERSION,
             schema_version=MATCH_SCHEMA_VERSION,
-            fetched_at=_parse_dt(row.get("fetched_at")) or run.fetched_at,
+            fetched_at=fetched_at,
             parse_warnings=warnings,
             metadata={
                 "stage_label": row.get("stage_label"),
@@ -249,13 +258,16 @@ def normalize_bing_run(run: BingKnowledgeRun) -> dict[str, list[dict[str, Any]]]
         if not match_id or match_id in matches:
             continue
         warnings = ["schedule_card_missing"]
-        kickoff_time = _parse_kickoff_time(row.get("date_label"), row.get("time_label"))
+        kickoff_time = _parse_kickoff_time(row.get("date_label"), row.get("time_label"), run.fetched_at)
         matches[match_id] = WorldCupMatch(
             match_id=match_id,
             stage=row.get("round") or "",
             group_name=None,
             kickoff_time=kickoff_time,
             kickoff_label=" ".join([str(row.get("date_label") or ""), str(row.get("time_label") or "")]).strip(),
+            resolved_kickoff_date=kickoff_time.date().isoformat() if kickoff_time else None,
+            date_confidence="high" if kickoff_time else "low",
+            data_as_of=run.fetched_at,
             home_team_id=_normalize_team_id(row.get("home_name"), None),
             away_team_id=_normalize_team_id(row.get("away_name"), None),
             winner_team_id=_normalize_team_id(row.get("winner_name"), None) if row.get("winner_name") else None,
@@ -361,6 +373,8 @@ def _filter_matches(
     result = []
     for row in rows:
         kickoff = row.get("kickoff_time")
+        if (date_from or date_to) and not kickoff:
+            continue
         if date_from and kickoff and str(kickoff)[:10] < date_from:
             continue
         if date_to and kickoff and str(kickoff)[:10] > date_to:
@@ -369,12 +383,27 @@ def _filter_matches(
             continue
         if stage and row.get("stage") != stage:
             continue
-        result.append(row)
+        result.append(_with_date_metadata(row))
     return result
 
 
-def _parse_kickoff_time(date_label: str | None, kickoff_label: str | None) -> datetime | None:
+def _parse_kickoff_time(
+    date_label: str | None,
+    kickoff_label: str | None,
+    fetched_at: datetime | None = None,
+) -> datetime | None:
     text = " ".join([date_label or "", kickoff_label or ""])
+    relative_match = re.search(r"(昨天|今天|明天).*?(\d{1,2}):(\d{2})", text)
+    if relative_match and fetched_at:
+        day_label, hour, minute = relative_match.groups()
+        offset = {"昨天": -1, "今天": 0, "明天": 1}[day_label]
+        base = fetched_at.astimezone(CHINA_TZ) + timedelta(days=offset)
+        return datetime(base.year, base.month, base.day, int(hour), int(minute), tzinfo=CHINA_TZ)
+    relative_day = re.search(r"(昨天|今天|明天)", text)
+    if relative_day and fetched_at:
+        offset = {"昨天": -1, "今天": 0, "明天": 1}[relative_day.group(1)]
+        base = fetched_at.astimezone(CHINA_TZ) + timedelta(days=offset)
+        return datetime(base.year, base.month, base.day, 0, 0, tzinfo=CHINA_TZ)
     timed_match = re.search(r"(\d{1,2})月(\d{1,2})日.*?(\d{1,2}):(\d{2})", text)
     if timed_match:
         month, day, hour, minute = [int(part) for part in timed_match.groups()]
@@ -384,6 +413,15 @@ def _parse_kickoff_time(date_label: str | None, kickoff_label: str | None) -> da
         return None
     month, day = [int(part) for part in date_match.groups()]
     return datetime(2026, month, day, 0, 0, tzinfo=CHINA_TZ)
+
+
+def _with_date_metadata(row: dict[str, Any]) -> dict[str, Any]:
+    kickoff = row.get("kickoff_time")
+    result = dict(row)
+    result["resolved_kickoff_date"] = str(kickoff)[:10] if kickoff else None
+    result["date_confidence"] = "high" if kickoff else "low"
+    result["data_as_of"] = row.get("fetched_at")
+    return result
 
 
 def _parse_dt(value: str | None) -> datetime | None:

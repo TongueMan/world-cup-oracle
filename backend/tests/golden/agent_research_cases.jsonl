@@ -1,0 +1,20 @@
+{"id":"benchmark_brazil_norway_preview","question":"请问明天巴西踢挪威的比赛你怎么看","toolIntent":"match_analysis","minSources":4,"minScore":26,"mustContain":["巴西","挪威","战术","胜负手"],"mustNotContain":["run_id","payload","JSON","http://","https://"],"requiresCitation":true}
+{"id":"context_conflict_sui_alg","question":"帮我分析瑞士和阿尔及利亚这场比赛","contextMatch":"COL_GHA","toolIntent":"match_analysis","minSources":0,"minScore":24,"mustContain":["瑞士","阿尔及利亚"],"mustNotContain":["哥伦比亚 vs 加纳 的分析结论"],"requiresCitation":false}
+{"id":"local_only_weather_missing","question":"本场天气会影响谁？","toolIntent":"weather_environment","searchMode":"local_only","minSources":0,"minScore":20,"mustContain":["天气","场馆"],"mustNotContain":["http://","run_id"],"requiresCitation":false}
+{"id":"latest_news_with_sources","question":"查找双方最新新闻和伤停","toolIntent":"latest_news","minSources":4,"minScore":26,"mustContain":["伤停","阵容","来源"],"mustNotContain":["payload","裸 URL"],"requiresCitation":true}
+{"id":"post_match_report","question":"复盘这场比赛，谁赢在关键点？","toolIntent":"post_match_report","minSources":4,"minScore":26,"mustContain":["关键点","战术","数据"],"mustNotContain":["JSON","run_id"],"requiresCitation":true}
+{"id":"history_head_to_head","question":"两队历史交锋和心理层面怎么看？","toolIntent":"match_analysis","minSources":4,"minScore":25,"mustContain":["历史","心理","交锋"],"mustNotContain":["payload","http://"],"requiresCitation":true}
+{"id":"lineup_injury_preview","question":"这场赛前阵容和伤停有什么要注意？","toolIntent":"pre_match_report","minSources":4,"minScore":26,"mustContain":["阵容","伤停","不确定"],"mustNotContain":["编造","run_id"],"requiresCitation":true}
+{"id":"wrong_match_guard","question":"我当前打开的是巴西，但想问葡萄牙对西班牙","toolIntent":"match_analysis","minSources":0,"minScore":24,"mustContain":["葡萄牙","西班牙"],"mustNotContain":["混在一起"],"requiresCitation":false}
+{"id":"official_source_priority","question":"有没有官方战报或权威媒体怎么看？","toolIntent":"match_analysis","minSources":4,"minScore":26,"mustContain":["官方","媒体","引用"],"mustNotContain":["低相关"],"requiresCitation":true}
+{"id":"tactical_matchup","question":"双方战术对位谁更占优？","toolIntent":"match_analysis","minSources":4,"minScore":26,"mustContain":["战术","对位","边路"],"mustNotContain":["裸 URL"],"requiresCitation":true}
+{"id":"underdog_risk","question":"这场有没有爆冷风险？","toolIntent":"match_analysis","minSources":4,"minScore":25,"mustContain":["爆冷","风险","胜负手"],"mustNotContain":["玄学替代事实"],"requiresCitation":true}
+{"id":"venue_conditions","question":"场地和气候会怎么影响比赛？","toolIntent":"weather_environment","minSources":2,"minScore":24,"mustContain":["场地","气候","影响"],"mustNotContain":["payload"],"requiresCitation":false}
+{"id":"no_search_config","question":"联网不可用时你能给什么？","searchMode":"required","toolIntent":"match_analysis","minSources":0,"minScore":20,"mustContain":["联网"],"mustNotContain":["已阅读 8 个网页"],"requiresCitation":false}
+{"id":"source_filtering","question":"给我可靠来源，不要视频号和社媒乱源","toolIntent":"match_analysis","minSources":4,"minScore":26,"mustContain":["可靠","来源"],"mustNotContain":["Facebook","TikTok"],"requiresCitation":true}
+{"id":"score_prediction","question":"你预测比分会是多少？","toolIntent":"match_analysis","minSources":4,"minScore":25,"mustContain":["预测","比分","不确定"],"mustNotContain":["保证"],"requiresCitation":true}
+{"id":"coach_press","question":"教练发布会和球队状态有什么信号？","toolIntent":"latest_news","minSources":4,"minScore":25,"mustContain":["发布会","状态","信号"],"mustNotContain":["裸 URL"],"requiresCitation":true}
+{"id":"player_duel","question":"关键球员对位怎么看？","toolIntent":"match_analysis","minSources":4,"minScore":26,"mustContain":["关键球员","对位"],"mustNotContain":["run_id"],"requiresCitation":true}
+{"id":"live_brief","question":"如果是实时比赛，当前局面怎么看？","toolIntent":"match_analysis","minSources":3,"minScore":24,"mustContain":["当前","局面"],"mustNotContain":["假装实时"],"requiresCitation":true}
+{"id":"data_gap","question":"哪些信息还缺，哪些结论不能下？","toolIntent":"match_analysis","minSources":2,"minScore":24,"mustContain":["缺少","不能确认"],"mustNotContain":["编造"],"requiresCitation":false}
+{"id":"deepseek_style_benchmark","question":"像 DeepSeek 网页端那样，但要更专业地分析这场比赛","toolIntent":"match_analysis","minSources":6,"minScore":26,"mustContain":["历史","核心对决","战术","胜负手"],"mustNotContain":["run_id","payload","http://"],"requiresCitation":true}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -52,4 +53,39 @@ def env_int(name: str, default: int = 0) -> int:
 
 
 def database_url() -> str:
-    return env_str("WCPA_DATABASE_URL", "")
+    if env_bool("WCPA_DISABLE_DATABASE", False):
+        return ""
+    configured = env_str("WCPA_DATABASE_URL", "")
+    composed = _postgres_url_from_parts()
+    if configured:
+        expanded = _expand_env_placeholders(configured)
+        if _looks_like_legacy_local_default(expanded) and composed:
+            return composed
+        return expanded
+    return composed
+
+
+def _postgres_url_from_parts() -> str:
+    db = env_str("WCPA_POSTGRES_DB", "wcpa")
+    user = env_str("WCPA_POSTGRES_USER", "postgre")
+    password = env_str("WCPA_POSTGRES_PASSWORD", "postgre")
+    port = env_str("WCPA_POSTGRES_PORT", "5432")
+    return f"postgresql://{user}:{password}@localhost:{port}/{db}"
+
+
+def _expand_env_placeholders(value: str) -> str:
+    pattern = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-[^}]*)?\}")
+
+    def replace(match: re.Match[str]) -> str:
+        expression = match.group(0)[2:-1]
+        if ":-" in expression:
+            name, default = expression.split(":-", 1)
+        else:
+            name, default = expression, ""
+        return env_str(name, default)
+
+    return pattern.sub(replace, value)
+
+
+def _looks_like_legacy_local_default(value: str) -> bool:
+    return "://wcpa:wcpa@localhost:" in value

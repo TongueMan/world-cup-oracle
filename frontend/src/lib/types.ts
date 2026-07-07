@@ -263,3 +263,161 @@ export interface WorldCupPlayerStat {
   image_url?: string | null;
   source_url?: string;
 }
+
+export interface WorldCupHistoryEdition {
+  year: number;
+  name: string;
+  name_zh?: string;
+  host_countries: string[];
+  host_countries_zh?: string[];
+  host_flag_codes?: string[];
+  champion: string;
+  champion_zh?: string;
+  champion_flag_code?: string | null;
+  runner_up: string;
+  runner_up_zh?: string;
+  runner_up_flag_code?: string | null;
+  match_count: number;
+  team_count: number;
+  start_date: string | null;
+  end_date: string | null;
+  source: string;
+  source_url: string;
+}
+
+export interface WorldCupHistoryMatch {
+  match_id: string;
+  year: number;
+  stage: string;
+  stage_zh?: string;
+  round: string | null;
+  round_zh?: string | null;
+  group_name: string | null;
+  group_name_zh?: string | null;
+  date: string | null;
+  time: string | null;
+  home_team: string | null;
+  home_team_zh?: string | null;
+  home_flag_code?: string | null;
+  away_team: string | null;
+  away_team_zh?: string | null;
+  away_flag_code?: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  home_score_et: number | null;
+  away_score_et: number | null;
+  home_penalty: number | null;
+  away_penalty: number | null;
+  winner_team: string | null;
+  winner_team_zh?: string | null;
+  winner_flag_code?: string | null;
+  venue: string | null;
+  venue_zh?: string | null;
+  city: string | null;
+  city_zh?: string | null;
+  source: string;
+  source_url: string;
+  champion?: string;
+  champion_zh?: string | null;
+  champion_flag_code?: string | null;
+  runner_up?: string;
+  runner_up_zh?: string | null;
+  runner_up_flag_code?: string | null;
+}
+
+export interface WorldCupHistoryEditionDetail extends WorldCupHistoryEdition {
+  stages: string[];
+  matches: WorldCupHistoryMatch[];
+}
+
+export interface AgentProviderModel {
+  id: string;
+  label: string;
+  mode: string;
+}
+
+export interface AgentProviderCapability {
+  id: string;
+  label: string;
+  base_url: string | null;
+  custom_base_url: boolean;
+  models: AgentProviderModel[];
+}
+
+export interface AgentSearchCapability {
+  enabled: boolean;
+  provider: string | null;
+  message: string;
+}
+
+export interface AgentCapabilities {
+  providers: AgentProviderCapability[];
+  search: AgentSearchCapability;
+}
+
+export interface AgentLLMConfig {
+  provider: string;
+  model: string;
+  apiKey: string;
+  baseURL?: string;
+  searchEnabled: boolean;
+}
+
+export interface AgentPageContext {
+  currentPage?: string;
+  activeTab?: string;
+  currentMatchId?: string;
+  selectedDate?: string;
+  summary?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface AgentChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AgentSearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  source: string;
+  domain?: string;
+  publishedAt?: string | null;
+  sourceQualityScore?: number;
+  relevanceScore?: number;
+  sourceType?: string;
+  adoptionReason?: string;
+  citationId?: number | null;
+  excerpt?: string;
+}
+
+export interface AgentMatchConfirmation {
+  currentMatch?: Record<string, unknown>;
+  requestedTeams?: string[];
+  candidates?: Array<Record<string, unknown>>;
+}
+
+export interface AgentDiagnostics {
+  runId?: string | null;
+  queryPlan?: Record<string, unknown>;
+  searchedCount?: number;
+  adoptedCount?: number;
+  filteredCount?: number;
+  filteredSources?: Array<Record<string, unknown>>;
+}
+
+export interface AgentMatchToolResponse {
+  answer: string;
+  sources: AgentSearchResult[];
+  run_id: string | null;
+  status?: 'ok' | 'needs_confirmation' | 'local_only' | 'degraded' | 'error';
+  confirmation?: AgentMatchConfirmation | null;
+  diagnostics?: AgentDiagnostics | null;
+  progress?: string[];
+  used_search: boolean;
+  search_allowed: boolean;
+  search_intents: string[];
+  missing_local_fields: string[];
+  evidence_status: string;
+}

@@ -1,4 +1,8 @@
 """共享 pytest fixtures。"""
+import os
+
+os.environ.setdefault("WCPA_DISABLE_DATABASE", "true")
+
 import pytest
 import numpy as np
 from wcpa.shared.random_utils import create_rng

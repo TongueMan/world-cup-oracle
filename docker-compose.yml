@@ -29,6 +29,8 @@ services:
       WCPA_LLM_BASE_URL: ${WCPA_LLM_BASE_URL:-https://api.deepseek.com}
       WCPA_LLM_MODEL: ${WCPA_LLM_MODEL:-deepseek-chat}
       WCPA_LLM_API_KEY: ${WCPA_LLM_API_KEY:-}
+      WCPA_WEB_SEARCH_ENABLED: ${WCPA_WEB_SEARCH_ENABLED:-true}
+      WCPA_SEARCH_PROVIDER: ${WCPA_SEARCH_PROVIDER:-firecrawl}
     depends_on:
       postgres:
         condition: service_healthy

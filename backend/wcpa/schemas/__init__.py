@@ -53,6 +53,14 @@ from wcpa.schemas.artifact import (  # noqa: E402
     DataQualityReport,
 )
 from wcpa.schemas.worldcup import WorldCupMatch, WorldCupSyncStatus, WorldCupTeam  # noqa: E402
+from wcpa.schemas.worldcup_environment import (  # noqa: E402
+    WorldCupEnvironmentFeatures,
+    WorldCupMatchEnvironment,
+    WorldCupMatchVenue,
+    WorldCupVenue,
+    WorldCupVenueList,
+    WorldCupWeatherSnapshot,
+)
 
 __all__ = [
     "WCPABaseModel",
@@ -82,4 +90,10 @@ __all__ = [
     "WorldCupMatch",
     "WorldCupSyncStatus",
     "WorldCupTeam",
+    "WorldCupEnvironmentFeatures",
+    "WorldCupMatchEnvironment",
+    "WorldCupMatchVenue",
+    "WorldCupVenue",
+    "WorldCupVenueList",
+    "WorldCupWeatherSnapshot",
 ]

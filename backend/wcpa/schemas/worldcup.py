@@ -23,6 +23,9 @@ class WorldCupMatch(WCPABaseModel):
     group_name: str | None = None
     kickoff_time: datetime | None = None
     kickoff_label: str | None = None
+    resolved_kickoff_date: str | None = None
+    date_confidence: str = "high"
+    data_as_of: datetime | None = None
     home_team_id: str | None = None
     away_team_id: str | None = None
     winner_team_id: str | None = None
@@ -59,4 +62,3 @@ class WorldCupSyncStatus(WCPABaseModel):
     updated_count: int = 0
     error_message: str | None = None
     raw_snapshot_dir: str | None = None
-

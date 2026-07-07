@@ -73,14 +73,14 @@ Copy-Item .env.example .env
 
 ```powershell
 $env:PYTHONPATH = "backend"
-C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 ```
 
 启动后端：
 
 ```powershell
 $env:PYTHONPATH = "backend"
-C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m uvicorn wcpa.api.server:app --reload --host 127.0.0.1 --port 8000
+python -m uvicorn wcpa.api.server:app --reload --host 127.0.0.1 --port 8000
 ```
 
 安装并启动前端：
@@ -117,21 +117,34 @@ docker compose up --build
 
 ```powershell
 $env:PYTHONPATH = "backend"
-C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m scripts.run_prediction --seed 42
+python -m scripts.run_prediction --seed 42
 ```
 
 同步世界杯数据：
 
 ```powershell
 $env:PYTHONPATH = "backend"
-C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m scripts.sync_real_data
+python -m scripts.sync_real_data
 ```
+
+同步世界杯场馆与环境数据：
+
+```powershell
+$env:PYTHONPATH = "backend"
+python -m scripts.sync_worldcup_venues
+python -m scripts.sync_match_venues
+python -m scripts.sync_venue_elevation
+python -m scripts.sync_match_weather
+python -m scripts.build_match_environment_features
+```
+
+场馆原始资料和人工审核说明放在 `开源数据/世界杯球场数据/`；后端运行时读取 `data/seeds/venues_seed.json` 或 PostgreSQL。
 
 运行测试：
 
 ```powershell
 $env:PYTHONPATH = "backend"
-C:\Users\CJB20\anaconda3\envs\llm_eval\python.exe -m pytest
+python -m pytest
 ```
 
 前端构建：
@@ -154,6 +167,18 @@ npm.cmd run build
 - `WCPA_LLM_BASE_URL`: OpenAI-compatible API 地址。
 - `WCPA_LLM_MODEL`: LLM 模型名。
 - `WCPA_LLM_API_KEY`: 本地私有 API Key。
+- `WCPA_WEB_SEARCH_ENABLED`: 是否启用 Agent 联网研究链路。
+- `WCPA_SEARCH_PROVIDER`: Agent 联网搜索服务；当前产品链路使用 `firecrawl`。
+- `WCPA_FIRECRAWL_API_KEY`: 可选 Firecrawl API Key；留空时后端会先尝试 Firecrawl Keyless，若服务返回 401/403 或超时则清晰降级。
+- `WCPA_RAG_ENABLED`: 是否启用 RAG 持久化与召回。
+- `WCPA_RAG_VECTOR_BACKEND`: RAG 向量后端；当前使用 PostgreSQL + `pgvector`。
+- `WCPA_EMBEDDING_PROVIDER` / `WCPA_EMBEDDING_MODEL` / `WCPA_EMBEDDING_API_KEY`: 可选 Embedding 配置；未配置时退化为 SQL + 关键词召回。
+
+## Agent 对话
+
+前端提供右侧抽屉式 Agent 对话入口。用户在浏览器中填写自己的模型 API Key，默认仅保存在当前浏览器会话；发起对话时 Key 会临时发送到后端，由 `/api/agents/chat/stream` 代理调用 OpenAI-compatible 模型服务，服务端不持久化保存该 Key。
+
+联网搜索不是 DeepSeek API 自带能力，而是后端 `ResearchAnswerEngine` 自建研究链路：本地赛程校验、Firecrawl 搜索/抓取、来源相关性过滤、RAG 召回、带引用生成和质量评分。Firecrawl 密钥是可选配置；未配置密钥时会先尝试 Keyless，搜索服务不可用时 Agent 会明确降级到本地数据模式，不会伪装成已经联网。
 
 ## 数据与提交策略
 
