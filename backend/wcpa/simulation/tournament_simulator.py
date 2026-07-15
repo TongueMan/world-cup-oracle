@@ -79,6 +79,7 @@ class TournamentSimulator:
                     features[m.away_team_id],
                     pred_rng,
                     allow_draw=True,
+                    sample_result=True,
                 )
                 match_predictions.append(pred)
 
@@ -137,6 +138,7 @@ class TournamentSimulator:
                     features[slot.away_team_id],
                     match_rng,
                     allow_draw=False,
+                    sample_result=True,
                 )
                 match_predictions.append(pred)
 
@@ -191,7 +193,7 @@ class TournamentSimulator:
 
         PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
 
-        output_path = PREDICTIONS_DIR / "tournament-prediction.json"
+        output_path = PREDICTIONS_DIR / "baseline-tournament-run.json"
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(artifact.model_dump_json(indent=2))
 

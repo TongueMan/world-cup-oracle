@@ -28,9 +28,15 @@ services:
       WCPA_ENABLE_LLM_AGENTS: "true"
       WCPA_LLM_BASE_URL: ${WCPA_LLM_BASE_URL:-https://api.deepseek.com}
       WCPA_LLM_MODEL: ${WCPA_LLM_MODEL:-deepseek-chat}
-      WCPA_LLM_API_KEY: ${WCPA_LLM_API_KEY:-}
+      WCPA_LLM_API_KEY_FILE: /run/secrets/llm_api_key
       WCPA_WEB_SEARCH_ENABLED: ${WCPA_WEB_SEARCH_ENABLED:-true}
       WCPA_SEARCH_PROVIDER: ${WCPA_SEARCH_PROVIDER:-firecrawl}
+      WCPA_FIRECRAWL_API_KEY_FILE: /run/secrets/firecrawl_api_key
+      WCPA_API_FOOTBALL_API_KEY: ${WCPA_API_FOOTBALL_API_KEY:-}
+      WCPA_API_FOOTBALL_ODDS_ENABLED: ${WCPA_API_FOOTBALL_ODDS_ENABLED:-true}
+    secrets:
+      - llm_api_key
+      - firecrawl_api_key
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,3 +57,9 @@ services:
 
 volumes:
   postgres_data:
+
+secrets:
+  llm_api_key:
+    environment: WCPA_LLM_API_KEY
+  firecrawl_api_key:
+    environment: WCPA_FIRECRAWL_API_KEY

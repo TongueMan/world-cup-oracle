@@ -297,6 +297,24 @@ CREATE INDEX IF NOT EXISTS idx_agent_workflow_runs_started_desc
   ON agent_workflow_runs (started_at DESC);
 """,
     ),
+    Migration(
+        migration_id="2026071401_prediction_publication_metadata",
+        description="Add stage-aware candidate and published prediction metadata.",
+        sql="""
+ALTER TABLE prediction_versions ADD COLUMN IF NOT EXISTS artifact_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE prediction_versions ADD COLUMN IF NOT EXISTS run_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE prediction_versions ADD COLUMN IF NOT EXISTS publication_status TEXT NOT NULL DEFAULT 'legacy';
+ALTER TABLE prediction_versions ADD COLUMN IF NOT EXISTS anchor_stage TEXT NOT NULL DEFAULT '';
+ALTER TABLE prediction_versions ADD COLUMN IF NOT EXISTS schedule_hash TEXT NOT NULL DEFAULT '';
+ALTER TABLE prediction_versions ADD COLUMN IF NOT EXISTS quality_status TEXT NOT NULL DEFAULT 'unknown';
+ALTER TABLE prediction_versions ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_prediction_versions_artifact_id
+  ON prediction_versions (artifact_id) WHERE artifact_id <> '';
+CREATE INDEX IF NOT EXISTS idx_prediction_versions_publication_generated
+  ON prediction_versions (publication_status, generated_at DESC);
+""",
+    ),
 )
 
 

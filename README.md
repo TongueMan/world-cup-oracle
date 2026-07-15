@@ -2,29 +2,33 @@
 
 World Cup Oracle 是一个面向 2026 世界杯的冠军预测与赛程数据 Agent 项目。项目目标不是只给出一个“冠军名单”，而是把赛程数据、球队基础强度、叙事因素、象征推理和多 Agent 辩论组织成一套可运行、可解释、可扩展的预测系统。
 
-当前仓库已经完成了前后端骨架、预测流水线雏形、Bing 体育数据同步、PostgreSQL 持久化、React 数据看板和 Docker Compose 本地部署。项目仍处在迭代阶段，部分 Agent 编排和真实数据校验策略还会继续增强。
+当前仓库已经完成了阶段性冠军预测中心、真实赛程同步、严格预测发布契约、历史预测起点回放、结构化 Agent 报告、PostgreSQL 持久化、React 预测页面和 Docker Compose 本地部署。项目仍处在迭代阶段，但冠军预测链路已经从“可运行原型”升级为“宁可空态也不展示错误结论”的真实性优先架构。
 
 ## 当前进展
 
 已完成或基本可用：
 
 - FastAPI 后端服务，提供健康检查、预测、赛程、球队、小组、淘汰赛、知识库、Agent 等 API 路由。
-- 48 队世界杯预测引擎雏形，支持小组赛、淘汰赛、冠军概率、比赛预测和推理产物输出。
-- 基础预测模型，包括球队强度特征、Poisson/比分模型、置信度和蒙特卡洛模拟。
+- 阶段性冠军预测中心，支持 `current`、`post_group`、`post_r32`、`post_r16`、`post_qf` 等预测起点。
+- 历史预测起点回放：保留起点之前已锁定赛果，清空之后结果，再从该阶段重新模拟冠军概率。
+- 严格发布契约：只有已发布、数据已验证、质量状态可用、冠军概率非空且概率合计为 1 的结果才会被前端展示。
+- 48 队世界杯预测引擎，支持淘汰赛条件模拟、冠军概率、单场预测、未来对阵情景和推理产物输出。
+- 多源预测模型，包括球队强度特征、Poisson/比分模型、市场赔率融合、新闻/阵容/环境证据、置信度和蒙特卡洛模拟。
 - 叙事与象征推理模块，包括 narrative、tarot、iching、astrology、upset signal 等独立组件。
 - Agent 辩论与评审骨架，包括数据、预测、叙事、象征、推理和 judge 相关模块。
 - Bing 体育世界杯数据同步，包含赛程、淘汰赛、排名、球员统计等结构化数据接口。
 - PostgreSQL 仓储层，用于保存同步数据、预测缓存和运行产物。
-- React + Vite + TypeScript 前端，当前重点是世界杯赛程/赛果指挥舱：比赛、淘汰赛、排名、统计信息和同步状态。
+- React + Vite + TypeScript 前端，包含首页、预测中心、报告、剩余比赛、冠军路径、模型与数据状态。
 - Docker Compose，包含 Postgres、API、前端 Nginx 三个服务。
-- 单元测试和集成测试目录，覆盖预测、赛程、API、schema、符号稳定性等核心路径。
+- 单元测试和前端交互测试，覆盖预测发布门禁、历史起点、外部证据、Agent 报告、前端空态和正式读取链路。
 
 仍在完善：
 
 - 多 Agent 工作流的完整自动编排。
 - LLM Agent 的提示词、工具调用和结果评审策略。
-- 真实数据源的稳定性、异常恢复和数据质量门禁。
-- 前端从“赛程数据看板”扩展到完整“预测解释与 Agent 辩论工作台”。
+- 赛前 `pre_tournament` 起点的小组赛完整模拟链路。
+- 外部数据源的长期稳定性、异常恢复和更细粒度的数据质量评分。
+- 生产部署中的长期任务调度、产物留存和观测告警。
 
 ## 技术栈
 
@@ -50,6 +54,8 @@ backend/
     features/           # 球队特征构建
     narrative/          # 叙事评分
     prediction/         # 比赛预测模型
+    prediction_release.py # 阶段性预测生成、验证、发布
+    prediction_report.py  # 结构化冠军预测报告
     reasoning/          # 解释与推理轨迹
     simulation/         # 小组赛、淘汰赛、冠军模拟
     symbolic/           # 塔罗、易经、占星等象征信号
@@ -59,7 +65,24 @@ data/
   fixtures/             # 样例数据
   normalized/           # 标准化样例和当前真实数据快照
 frontend/               # React 前端
+outputs/                # 本地产物目录，默认不提交
 ```
+
+## 阶段性冠军预测中心
+
+预测中心不是简单读取最新 JSON，而是围绕“预测起点”构建一条完整链路：
+
+- `current`：基于当前赛况，只模拟后续未完成比赛。
+- `post_group`：小组赛结束、32 强赛前。
+- `post_r32`：32 强结束、16 强赛前。
+- `post_r16`：16 强结束、8 强赛前。
+- `post_qf`：8 强结束、4 强赛前。
+- `post_sf`：半决赛结束、决赛赛前，赛事到达后才可用。
+- `pre_tournament`：需要完整小组赛模拟链路，当前明确标记为暂不支持。
+
+历史起点回放会阻止未来信息泄漏：系统不会把生成时刻之后的新闻、赔率、阵容伤停、FIFA 排名或 Elo 缓存塞回过去阶段。缺少当时封存外部证据时，模型只使用该起点之前的赛果切片、历史经验和明确标注的保守派生特征。
+
+前端遵循失败关闭原则：如果指定阶段没有通过验证的正式结果，页面显示产品化空态，不会回退到其他阶段，不会生成均匀概率，也不会把候选产物伪装成冠军预测。
 
 ## 本地运行
 
@@ -99,11 +122,25 @@ http://localhost:5173
 
 ## Docker Compose
 
-也可以直接启动完整本地环境：
+`start.bat` 默认启动完整容器环境，PostgreSQL、API 和前端都会归入
+`worldcup-oracle` Compose 项目组：
+
+```powershell
+start.bat
+```
+
+也可以直接执行：
 
 ```bash
-docker compose up --build
+docker compose --env-file .env --env-file .env.local up --build
 ```
+
+如需使用本机 Python 和 Vite 调试，请显式运行 `start.bat dev`。该模式只把
+PostgreSQL 放入容器，API 和前端作为本机开发进程运行，不应再额外创建独立的
+`wcpa-api-preview` 容器。
+
+LLM 和 Firecrawl 密钥通过 Docker secrets 以只读文件注入 API 容器，避免在
+Compose 展开配置中输出明文；API-Sports 的本地配置由 `.env.local` 注入。
 
 默认服务：
 
@@ -113,11 +150,29 @@ docker compose up --build
 
 ## 常用命令
 
-运行预测流水线：
+运行旧完整赛事模拟脚本（开发调试用，不等同于预测中心正式发布链路）：
 
 ```powershell
 $env:PYTHONPATH = "backend"
-python -m scripts.run_prediction --seed 42
+python -m scripts.run_prediction --seed 42 --mode professional
+```
+
+生成并发布指定预测起点：
+
+```powershell
+$env:PYTHONPATH = "backend"
+@'
+from wcpa.prediction_release import PredictionReleaseService
+print(PredictionReleaseService().run(sync_first=True, anchor="current"))
+'@ | python -
+```
+
+验证指定预测产物：
+
+```powershell
+$env:PYTHONPATH = "backend"
+python backend/scripts/validate_artifacts.py --anchor current
+python backend/scripts/validate_artifacts.py --anchor post_group
 ```
 
 同步世界杯数据：
@@ -144,7 +199,9 @@ python -m scripts.build_match_environment_features
 
 ```powershell
 $env:PYTHONPATH = "backend"
-python -m pytest
+python -m pytest backend/tests/unit -q
+cd frontend
+npm.cmd test -- --run
 ```
 
 前端构建：

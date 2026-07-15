@@ -1,15 +1,14 @@
-"""API strict data gate regression tests."""
+"""预测 API 的缺数据降级回归测试。"""
 
 from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
 from wcpa.api.server import app
-from wcpa.data.real_dataset import DataUnavailableError
-from wcpa.schemas.artifact import DataQualityReport, DataSourceStatus
+from wcpa.schemas.artifact import DataQualityReport, DataSourceStatus, TournamentPrediction
 
 
-def test_predict_tournament_returns_json_409_for_data_unavailable(monkeypatch):
+def test_predict_tournament_returns_degraded_prediction_instead_of_409(monkeypatch):
     source_status = DataSourceStatus(
         source_key="bing_sports_schedule",
         status="ok",
@@ -30,24 +29,36 @@ def test_predict_tournament_returns_json_409_for_data_unavailable(monkeypatch):
             }
         ],
         source_statuses=[source_status],
-        message="真实数据存在缺失字段，正式预测已停止。",
+        message="真实数据存在缺失字段，已执行低置信度预测。",
+    )
+    degraded_report = report.model_copy(update={"status": "degraded_prediction"})
+    artifact = TournamentPrediction(
+        champion_team_id="ARG",
+        data_verified=False,
+        data_quality_report=degraded_report,
     )
 
-    class FakeEngine:
-        def __init__(self, seed: int = 42, mode: str = "balanced"):
-            self.seed = seed
-            self.mode = mode
+    class FakeReleaseService:
+        def run(self, sync_first: bool = True, anchor: str = "current"):
+            return {
+                "run_id": "test-run",
+                "publish_status": "candidate_only",
+                "reason_codes": ["data_not_verified"],
+                "candidate_artifact_id": "candidate-test",
+                "published_artifact_id": None,
+                "artifact": artifact.model_dump(mode="json"),
+            }
 
-        def run_and_save(self, precompute_agents: bool = True, strict: bool = True):
-            raise DataUnavailableError(report)
-
-    monkeypatch.setattr("wcpa.api.routes.predict.OracleTournamentEngine", FakeEngine)
+    monkeypatch.setattr("wcpa.api.routes.predict.PredictionReleaseService", FakeReleaseService)
 
     client = TestClient(app, raise_server_exceptions=False)
-    response = client.post("/api/predict/tournament?seed=42&mode=balanced")
+    response = client.post(
+        "/api/predict/tournament?anchor=current&seed=42&mode=professional&precompute_agents=false&strict=true"
+    )
 
-    assert response.status_code == 409
+    assert response.status_code == 200
     body = response.json()
-    assert body["detail"]["status"] == "invalid"
-    assert body["detail"]["source_statuses"][0]["fetched_at"] == "2026-07-03T00:00:00Z"
-    assert body["detail"]["message"] == "真实数据存在缺失字段，正式预测已停止。"
+    assert body["publish_status"] == "candidate_only"
+    assert body["artifact"]["data_quality_report"]["status"] == "degraded_prediction"
+    assert body["artifact"]["data_quality_report"]["source_statuses"][0]["fetched_at"] == "2026-07-03T00:00:00Z"
+    assert body["artifact"]["champion_team_id"] == "ARG"

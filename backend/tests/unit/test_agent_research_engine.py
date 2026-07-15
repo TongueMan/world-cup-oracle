@@ -75,6 +75,76 @@ def test_tournament_champion_question_uses_global_queries():
     assert "event: confirmation_required" not in text
 
 
+def test_tournament_prediction_refuses_to_invent_forecast_without_bound_artifact():
+    req = _request(
+        message="那就请你预测世界杯冠军是谁",
+        context={
+            "currentPage": "worldcup-dashboard",
+            "activeTab": "bracket",
+            "data": {"scope": "page", "tab": "bracket", "totalMatches": 31, "placeholderMatches": 2},
+        },
+        searchMode="local_only",
+        toolIntent="general",
+    )
+
+    text = "".join(stream_research_answer(req))
+
+    assert "当前没有有效冠军预测" in text
+    assert "旧阶段结果" in text
+    assert "均匀概率" in text
+    assert "巴西：约" not in text
+
+
+def test_tournament_prediction_replaces_thin_refusal_with_truthful_unavailable_state():
+    req = _request(
+        message="请问你对于本届世界杯冠军的更加看好谁夺冠呢",
+        context={
+            "currentPage": "worldcup-dashboard",
+            "activeTab": "bracket",
+            "data": {"scope": "page", "tab": "bracket", "totalMatches": 31, "placeholderMatches": 2},
+        },
+        toolIntent="general",
+    )
+    context = {"scope": "page", "page": req.context.data, "environment": {}, "bracket": {}, "team_history": {}}
+    plan = build_research_plan(req, context, {"enabled": False})
+
+    answer = _finalize_answer(
+        "目前没有足够数据支持我给出一个明确的看好对象。",
+        [{"citationId": 1, "relevanceScore": 0.8}, {"citationId": 2, "relevanceScore": 0.8}],
+        request=req,
+        context=context,
+        plan=plan,
+    )
+
+    assert "当前没有有效冠军预测" in answer
+    assert "默认球队强度" in answer
+    assert "巴西" not in answer
+    assert "没有足够数据支持我给出一个明确的看好对象" not in answer
+
+
+def test_page_context_does_not_fall_back_to_default_match():
+    req = _request(
+        message="请分析当前赛程表页面。",
+        context={
+            "currentPage": "worldcup-dashboard",
+            "activeTab": "bracket",
+            "data": {
+                "scope": "page",
+                "tab": "bracket",
+                "totalMatches": 31,
+                "placeholderMatches": 9,
+            },
+        },
+        toolIntent="general",
+    )
+
+    text = "".join(stream_research_answer(req))
+
+    assert "Brazil vs Norway" not in text
+    assert "当前页面概览" in text
+    assert "31" in text
+
+
 def test_environment_question_uses_venue_queries_from_structured_context():
     req = _request(
         message="Lumen Field 是人工草皮吗？世界杯这场怎么处理？",
@@ -280,7 +350,7 @@ def test_local_answer_removes_unsupported_personnel_names_without_rosters():
 
     assert "德布劳内" not in answer
     assert "卢卡库" not in answer
-    assert "淘汰赛路径占位" in answer
+    assert "路径情景推演" in answer
     assert "不是已确定球队" in answer
 
 
@@ -411,10 +481,25 @@ def test_research_stream_local_only_explains_bracket_placeholders():
 
     assert "淘汰赛路径占位" in text
     assert "不是已确定球队" in text
-    assert "W101" in text
-    assert "W102" in text
+    assert "TBD" in text or "尚未确定" in text
     assert "美国队" not in text
     assert "比利时队" not in text
+
+
+def test_research_stream_placeholder_prediction_uses_scenario_not_identity_shortcut():
+    req = _request(
+        message="请预测 W101 vs W102 的决赛走势，做路径情景推演。",
+        context={
+            "currentPage": "worldcup-dashboard",
+            "currentMatchId": "SportRadar_Soccer_InternationalWorldCup_2026_Game_53452537",
+        },
+        toolIntent="match_analysis",
+    )
+    text = "".join(stream_research_answer(req))
+
+    assert "路径情景推演" in text
+    assert "淘汰赛路径占位说明" not in text
+    assert "不是已确定球队" in text
 
 
 def test_research_stream_required_search_reports_config_error(monkeypatch):

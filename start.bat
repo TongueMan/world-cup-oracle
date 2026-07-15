@@ -3,12 +3,55 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 cd /d "%~dp0"
 
+if /I "%~1"=="dev" goto local_dev
+
+echo [World Cup Oracle] Starting the complete Docker Compose stack...
+
+where docker >nul 2>nul
+if errorlevel 1 (
+  echo [error] Docker command was not found.
+  echo Install or start Docker Desktop, or run "start.bat dev" for the local development mode.
+  pause
+  exit /b 1
+)
+
+docker info >nul 2>nul
+if errorlevel 1 (
+  echo [error] Docker Desktop is installed but the Linux container engine is not running.
+  echo Start Docker Desktop, or run "start.bat dev" for the local development mode.
+  pause
+  exit /b 1
+)
+
+set "COMPOSE_ENV_ARGS=--env-file .env"
+if exist ".env.local" set "COMPOSE_ENV_ARGS=!COMPOSE_ENV_ARGS! --env-file .env.local"
+
+echo [compose] Building and starting PostgreSQL, API and frontend in project group worldcup-oracle...
+docker compose !COMPOSE_ENV_ARGS! up -d --build
+if errorlevel 1 (
+  echo [error] Docker Compose startup failed.
+  pause
+  exit /b 1
+)
+
+echo.
+echo Started in one Docker Compose project group:
+echo - API:        http://127.0.0.1:8000
+echo - Frontend:   http://127.0.0.1:8080
+echo - PostgreSQL: 127.0.0.1:5432
+echo.
+echo Use "docker compose ps" to inspect the three services.
+pause
+exit /b 0
+
+:local_dev
+
 set "ROOT=%CD%"
 if not defined PYTHON_EXE set "PYTHON_EXE=python"
 set "BACKEND_PORT=8000"
 set "FRONTEND_PORT=5173"
 
-echo [World Cup Oracle] Starting local development environment...
+echo [World Cup Oracle] Starting explicit local development mode...
 
 if not exist ".env" (
   if exist ".env.example" (

@@ -10,22 +10,25 @@ from pathlib import Path
 
 @lru_cache(maxsize=1)
 def load_env_file() -> None:
-    """Load project .env without overriding process environment."""
+    """Load local/project env files without overriding process environment."""
     current = Path(__file__).resolve()
-    env_path = None
+    env_root = None
     for parent in current.parents:
         candidate = parent / ".env"
         if candidate.exists():
-            env_path = candidate
+            env_root = parent
             break
-    if env_path is None:
+    if env_root is None:
         return
-    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
+    for env_path in (env_root / ".env.local", env_root / ".env"):
+        if not env_path.exists():
             continue
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -38,7 +41,16 @@ def env_bool(name: str, default: bool = False) -> bool:
 
 def env_str(name: str, default: str = "") -> str:
     load_env_file()
-    return os.getenv(name, default).strip()
+    value = os.getenv(name)
+    if value is not None:
+        return value.strip()
+    secret_path = os.getenv(f"{name}_FILE", "").strip()
+    if secret_path:
+        try:
+            return Path(secret_path).read_text(encoding="utf-8").strip()
+        except OSError:
+            return default
+    return default.strip()
 
 
 def env_int(name: str, default: int = 0) -> int:
@@ -69,8 +81,9 @@ def _postgres_url_from_parts() -> str:
     db = env_str("WCPA_POSTGRES_DB", "wcpa")
     user = env_str("WCPA_POSTGRES_USER", "postgre")
     password = env_str("WCPA_POSTGRES_PASSWORD", "postgre")
+    host = env_str("WCPA_POSTGRES_HOST", "127.0.0.1")
     port = env_str("WCPA_POSTGRES_PORT", "5432")
-    return f"postgresql://{user}:{password}@localhost:{port}/{db}"
+    return f"postgresql://{user}:{password}@{host}:{port}/{db}"
 
 
 def _expand_env_placeholders(value: str) -> str:

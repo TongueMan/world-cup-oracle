@@ -30,11 +30,11 @@ export function usePrediction() {
   }, []);
 
   const runPrediction = useCallback(
-    async (seed: number = 42, mode: string = 'balanced') => {
+    async () => {
       setLoading(true);
       setError(null);
       try {
-        await api.runPrediction(seed, mode);
+        await api.runPrediction();
         // 给后端留一点时间写入严格预测结果，然后重新读取。
         setTimeout(() => loadPrediction(), 3000);
       } catch (err) {

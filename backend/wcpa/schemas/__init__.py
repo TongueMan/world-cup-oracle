@@ -31,7 +31,16 @@ from wcpa.schemas.tournament import (  # noqa: E402
     KnockoutSlot,
     Bracket,
 )
-from wcpa.schemas.prediction import MatchPrediction  # noqa: E402
+from wcpa.schemas.prediction import (  # noqa: E402
+    BookmakerOdds,
+    MatchPrediction,
+    PredictionContext,
+    PredictionEvidence,
+    ProbabilityAdjustment,
+    ProbabilityComponent,
+    ScorelineProbability,
+    SemanticProbabilitySignal,
+)
 from wcpa.schemas.narrative import NarrativeProfile  # noqa: E402
 from wcpa.schemas.symbolic import (  # noqa: E402
     SymbolicSignal,
@@ -51,6 +60,10 @@ from wcpa.schemas.artifact import (  # noqa: E402
     ChampionProbability,
     DataSourceStatus,
     DataQualityReport,
+    PredictionAgentReport,
+    PredictionReportFigure,
+    PredictionReportReference,
+    PredictionReportSection,
 )
 from wcpa.schemas.worldcup import WorldCupMatch, WorldCupSyncStatus, WorldCupTeam  # noqa: E402
 from wcpa.schemas.worldcup_environment import (  # noqa: E402
@@ -73,6 +86,13 @@ __all__ = [
     "KnockoutSlot",
     "Bracket",
     "MatchPrediction",
+    "BookmakerOdds",
+    "PredictionContext",
+    "PredictionEvidence",
+    "ProbabilityAdjustment",
+    "ProbabilityComponent",
+    "ScorelineProbability",
+    "SemanticProbabilitySignal",
     "NarrativeProfile",
     "SymbolicSignal",
     "TarotSignal",
@@ -87,6 +107,10 @@ __all__ = [
     "ChampionProbability",
     "DataSourceStatus",
     "DataQualityReport",
+    "PredictionAgentReport",
+    "PredictionReportFigure",
+    "PredictionReportReference",
+    "PredictionReportSection",
     "WorldCupMatch",
     "WorldCupSyncStatus",
     "WorldCupTeam",

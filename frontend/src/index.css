@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --top-nav-height: 140px;
+  --top-nav-height: 88px;
   --page-tabs-height: 68px;
   --z-content: 1;
   --z-page-tabs: 50;
@@ -12,7 +12,7 @@
 
 @media (max-width: 767px) {
   :root {
-    --top-nav-height: 148px;
+    --top-nav-height: 76px;
   }
 }
 
@@ -94,6 +94,54 @@ textarea {
   height: var(--top-nav-height);
   z-index: var(--z-top-nav);
   overflow: visible;
+}
+
+.header-inner {
+  min-height: var(--top-nav-height);
+}
+
+.brand-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.header-route-link,
+.header-sync-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 9px 11px;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.header-route-link.active {
+  border-color: rgba(246, 200, 69, 0.62);
+  background: rgba(246, 200, 69, 0.16);
+  color: #ffe18a;
+}
+
+.header-sync-button {
+  border: 0;
+  background: #f6c845;
+  color: #13210b;
+  cursor: pointer;
+}
+
+.header-sync-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mobile-prediction-label {
+  display: none;
 }
 
 .app-main {
@@ -1191,6 +1239,39 @@ textarea {
 }
 
 @media (max-width: 767px) {
+  .header-inner {
+    gap: 8px;
+  }
+
+  .brand-link h1 {
+    max-width: 132px;
+    font-size: 15px;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .brand-link .football-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .header-route-nav .header-route-link:first-child {
+    display: none;
+  }
+
+  .desktop-prediction-label {
+    display: none;
+  }
+
+  .mobile-prediction-label {
+    display: inline;
+  }
+
+  .header-sync-button {
+    width: 40px;
+    padding: 8px;
+  }
+
   .top-mega-nav {
     overflow-x: auto;
   }

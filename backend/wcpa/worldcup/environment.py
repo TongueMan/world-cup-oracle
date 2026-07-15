@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -24,6 +25,8 @@ from wcpa.shared.paths import DATA_DIR
 VENUES_SEED_FILE = DATA_DIR / "seeds" / "venues_seed.json"
 OPEN_METEO_ELEVATION_URL = "https://api.open-meteo.com/v1/elevation"
 OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+ENVIRONMENT_CACHE_DIR = DATA_DIR / "cache" / "worldcup" / "environment"
+WORLD_CUP_MATCHES_FILE = DATA_DIR / "knowledge" / "worldcup" / "matches.json"
 
 
 @dataclass(frozen=True)
@@ -145,6 +148,7 @@ def fetch_hourly_weather(
     kickoff_time: datetime,
     timeout: float = 15.0,
 ) -> dict[str, Any]:
+    kickoff_utc = _ensure_datetime(kickoff_time).astimezone(timezone.utc)
     query = {
         "latitude": latitude,
         "longitude": longitude,
@@ -159,9 +163,9 @@ def fetch_hourly_weather(
                 "wind_gusts_10m",
             ]
         ),
-        "timezone": "auto",
-        "start_date": kickoff_time.date().isoformat(),
-        "end_date": kickoff_time.date().isoformat(),
+        "timezone": "UTC",
+        "start_date": kickoff_utc.date().isoformat(),
+        "end_date": kickoff_utc.date().isoformat(),
     }
     source_url = f"{OPEN_METEO_FORECAST_URL}?{urlencode(query)}"
     try:
@@ -446,6 +450,9 @@ class WorldCupEnvironmentService:
             return _environment_response(row)
         match_venue = self.repository.load_match_venue(match_id)
         if not match_venue:
+            file_backed = _file_backed_match_environment(match_id)
+            if file_backed:
+                return file_backed
             return {
                 "match_id": match_id,
                 "data_status": "data_unavailable",
@@ -458,6 +465,108 @@ class WorldCupEnvironmentService:
             "data_status": "partial",
             "reason": "weather forecast unavailable for kickoff time",
         }
+
+
+def _file_backed_match_environment(match_id: str) -> dict[str, Any] | None:
+    """Resolve venue and live weather without requiring PostgreSQL."""
+
+    try:
+        matches = json.loads(WORLD_CUP_MATCHES_FILE.read_text(encoding="utf-8"))
+        match = next((row for row in matches if row.get("match_id") == match_id), None)
+        if not match:
+            return None
+        source_venue_id = (match.get("metadata") or {}).get("venue_id")
+        venue = next(
+            (
+                row
+                for row in load_venue_seed()
+                if source_venue_id in (row.get("source_venue_ids") or [])
+            ),
+            None,
+        )
+        if not venue:
+            return None
+        cached = _read_environment_cache(match_id)
+        if cached:
+            return cached
+        kickoff = _ensure_datetime(match.get("kickoff_time"))
+        weather = fetch_hourly_weather(
+            float(venue["latitude"]),
+            float(venue["longitude"]),
+            kickoff,
+        )
+        if weather.get("status") != "ok":
+            payload = {
+                "match_id": match_id,
+                "venue": venue,
+                "features": {},
+                "summary": "场馆已经确认，但当前天气源没有返回开赛时段预报。",
+                "data_status": "partial",
+                "reason": weather.get("error") or "weather forecast unavailable",
+                "source": venue.get("source"),
+                "source_url": venue.get("source_url", ""),
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            }
+            _write_environment_cache(match_id, payload)
+            return payload
+        features = compute_environment_features(
+            temperature_c=weather.get("temperature_c"),
+            apparent_temperature_c=weather.get("apparent_temperature_c"),
+            humidity_pct=weather.get("humidity_pct"),
+            precipitation_mm=weather.get("precipitation_mm"),
+            rain_probability=weather.get("rain_probability"),
+            wind_speed_kmh=weather.get("wind_speed_kmh"),
+            wind_gust_kmh=weather.get("wind_gust_kmh"),
+            altitude_m=venue.get("altitude_m"),
+        )
+        payload = {
+            "match_id": match_id,
+            "venue": venue,
+            "weather": {
+                key: weather.get(key)
+                for key in (
+                    "matched_hour", "temperature_c", "apparent_temperature_c", "humidity_pct",
+                    "precipitation_mm", "rain_probability", "wind_speed_kmh", "wind_gust_kmh",
+                )
+            },
+            "features": features,
+            "summary": features.get("environment_summary") or "开赛时段天气已经获取。",
+            "data_status": "ok",
+            "source": weather.get("source"),
+            "source_url": weather.get("source_url", ""),
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+        _write_environment_cache(match_id, payload)
+        return payload
+    except (OSError, ValueError, TypeError, VenueSeedError):
+        return None
+
+
+def _environment_cache_path(match_id: str) -> Path:
+    digest = hashlib.sha256(match_id.encode("utf-8")).hexdigest()[:20]
+    return ENVIRONMENT_CACHE_DIR / f"{digest}.json"
+
+
+def _read_environment_cache(match_id: str) -> dict[str, Any] | None:
+    path = _environment_cache_path(match_id)
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        fetched_at = _ensure_datetime(payload.get("fetched_at"))
+        if payload.get("data_status") == "ok" and datetime.now(timezone.utc) - fetched_at <= timedelta(hours=1):
+            return payload
+    except (OSError, ValueError, TypeError):
+        return None
+    return None
+
+
+def _write_environment_cache(match_id: str, payload: dict[str, Any]) -> None:
+    ENVIRONMENT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path = _environment_cache_path(match_id)
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.replace(path)
 
 
 def _environment_response(row: dict[str, Any]) -> dict[str, Any]:
@@ -611,7 +720,9 @@ def _hourly_value(hourly: dict[str, list[Any]], key: str, index: int) -> float |
     return float(values[index])
 
 
-def _ensure_datetime(value: datetime) -> datetime:
+def _ensure_datetime(value: datetime | str) -> datetime:
+    if isinstance(value, str):
+        value = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value

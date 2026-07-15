@@ -51,7 +51,7 @@ def load_strict_real_dataset(
             strict=True,
             missing=missing,
             source_statuses=source_statuses,
-            message="Agent 联网搜索尚未形成完整结构化世界杯数据，正式预测已停止；不会使用 fixture 或模拟数据兜底。",
+            message="Agent 联网搜索尚未形成完整结构化世界杯数据，需要降级预测。",
         )
         raise DataUnavailableError(report)
 
@@ -109,7 +109,7 @@ def load_strict_real_dataset(
             strict=True,
             invalid_records=invalid_records[:50],
             source_statuses=source_statuses,
-            message="Agent 搜索已有证据，但球队模型字段尚未结构化完整，正式预测已停止。",
+            message="Agent 搜索已有证据，但球队模型字段尚未结构化完整，需要降级预测。",
         )
         raise DataUnavailableError(report)
 
@@ -145,7 +145,7 @@ def load_strict_real_dataset(
             strict=True,
             invalid_records=invalid_records[:50],
             source_statuses=source_statuses,
-            message="Agent 证据结构化校验失败，正式预测已停止。",
+            message="Agent 证据结构化校验失败，需要降级预测。",
         )
         raise DataUnavailableError(report)
 

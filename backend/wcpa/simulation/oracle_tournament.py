@@ -11,7 +11,7 @@ from itertools import combinations
 
 from wcpa.data.repositories.fixture_loader import load_matches, load_narratives, load_teams
 from wcpa.data.repositories.postgres_repository import PostgresRepository
-from wcpa.data.real_dataset import load_strict_real_dataset
+from wcpa.data.real_dataset import DataUnavailableError, load_strict_real_dataset
 from wcpa.data.sources.web_collectors import SourceSnapshot, WebCollector
 from wcpa.debate.debate_runner import DebateRunner
 from wcpa.features.feature_builder import build_features
@@ -20,13 +20,15 @@ from wcpa.prediction.match_predictor import BaselineMatchPredictor
 from wcpa.schemas.artifact import ChampionProbability, DataSourceStatus, TournamentPrediction
 from wcpa.schemas.match import Match, MatchResult
 from wcpa.schemas.narrative import NarrativeProfile
-from wcpa.schemas.prediction import MatchPrediction
+from wcpa.schemas.prediction import MatchPrediction, PredictionContext
 from wcpa.schemas.symbolic import SymbolicSignal
 from wcpa.schemas.team import Team
 from wcpa.schemas.tournament import Bracket, GroupStanding, KnockoutSlot
 from wcpa.shared.random_utils import create_rng, derive_rng
+from wcpa.shared.config_loader import load_config
 from wcpa.shared.paths import PREDICTIONS_DIR
 from wcpa.simulation.group_standings import compute_group_standings
+from wcpa.simulation.monte_carlo import run_world_cup_monte_carlo
 from wcpa.symbolic.symbolic_engine import FixtureSymbolicEngine
 
 
@@ -75,7 +77,12 @@ FALLBACK_TEAM_ROWS = [
 class OracleTournamentEngine:
     """Runs real-time aware 48-team prediction with agent-ready outputs."""
 
-    def __init__(self, seed: int = 42, mode: str = "balanced"):
+    def __init__(
+        self,
+        seed: int = 42,
+        mode: str = "balanced",
+        monte_carlo_iterations: int | None = None,
+    ):
         self.seed = seed
         self.mode = mode
         self.rng = create_rng(seed)
@@ -83,6 +90,10 @@ class OracleTournamentEngine:
         self.symbolic_engine = FixtureSymbolicEngine()
         self.debate_runner = DebateRunner()
         self.repository = PostgresRepository()
+        simulation_config = load_config("simulation")
+        self.monte_carlo_iterations = monte_carlo_iterations or int(
+            simulation_config["monte_carlo"]["iterations"]
+        )
 
     def run(self, precompute_agents: bool = True, strict: bool = True) -> TournamentPrediction:
         snapshots = WebCollector().collect_all()
@@ -90,9 +101,23 @@ class OracleTournamentEngine:
         data_sources = [snapshot.status for snapshot in snapshots]
 
         if strict:
-            teams, matches, narratives, data_quality_report = load_strict_real_dataset(
-                data_sources
-            )
+            try:
+                teams, matches, narratives, data_quality_report = load_strict_real_dataset(
+                    data_sources
+                )
+            except DataUnavailableError as exc:
+                teams = self._load_48_teams()
+                matches = self._load_group_matches(teams)
+                narratives = self._load_narratives(teams)
+                data_quality_report = exc.report.model_copy(
+                    update={
+                        "status": "degraded_prediction",
+                        "message": (
+                            "严格数据校验未通过，已使用现有本地资料和模型先验继续生成"
+                            "低置信度预测；缺失项已保留在质量报告中。"
+                        ),
+                    }
+                )
         else:
             teams = self._load_48_teams()
             matches = self._load_group_matches(teams)
@@ -189,7 +214,7 @@ class OracleTournamentEngine:
                     )
                 )
 
-        probabilities = self._champion_probabilities(teams, bracket.champion_team_id)
+        probabilities = self._champion_probabilities(teams, matches, features)
         dark_horses = self._dark_horses(teams, narratives)
         upset_alerts = self._upset_alerts(match_predictions)
         champion_path = self._champion_path(bracket)
@@ -198,7 +223,7 @@ class OracleTournamentEngine:
             edition="2026",
             seed=self.seed,
             mode=self.mode,
-            artifact_version="2.0.0",
+            artifact_version="3.0.0",
             generated_at=datetime.now(timezone.utc),
             group_standings=group_standings,
             bracket=bracket,
@@ -219,7 +244,7 @@ class OracleTournamentEngine:
             data_sources=data_sources,
             champion_path=champion_path,
             path_reconstruction_notes=self._path_notes(data_sources),
-            data_verified=strict,
+            data_verified=data_quality_report.status == "ready",
             data_quality_report=data_quality_report,
         )
         return artifact
@@ -229,7 +254,7 @@ class OracleTournamentEngine:
     ) -> TournamentPrediction:
         artifact = self.run(precompute_agents=precompute_agents, strict=strict)
         PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
-        path = PREDICTIONS_DIR / "tournament-prediction.json"
+        path = PREDICTIONS_DIR / "oracle-tournament-run.json"
         path.write_text(artifact.model_dump_json(indent=2), encoding="utf-8")
         self.repository.save_prediction(artifact)
         return artifact
@@ -317,14 +342,38 @@ class OracleTournamentEngine:
         allow_draw: bool,
         stage_key: str,
     ) -> tuple[MatchPrediction, MatchResult, SymbolicSignal]:
+        home_team = team_map[match.home_team_id]
+        away_team = team_map[match.away_team_id]
+        structured_available = all(
+            team.data_quality in {"A", "B", "C"} for team in (home_team, away_team)
+        )
+        missing_fields = []
+        if not all(team.verified for team in (home_team, away_team)):
+            missing_fields.append("verified_external_team_data")
+        context = PredictionContext(
+            structured_data_available=structured_available,
+            missing_fields=missing_fields,
+        )
         pred = self.predictor.predict(
             match,
-            team_map[match.home_team_id],
-            team_map[match.away_team_id],
+            home_team,
+            away_team,
             features[match.home_team_id],
             features[match.away_team_id],
             derive_rng(self.rng, stage_key),
             allow_draw=allow_draw,
+            context=context,
+        )
+        sampled_prediction = self.predictor.predict(
+            match,
+            home_team,
+            away_team,
+            features[match.home_team_id],
+            features[match.away_team_id],
+            derive_rng(self.rng, f"{stage_key}_sample"),
+            allow_draw=allow_draw,
+            context=context,
+            sample_result=True,
         )
         symbolic = self.symbolic_engine.generate_signal(
             match.match_id,
@@ -338,19 +387,17 @@ class OracleTournamentEngine:
                 "home_team_id": match.home_team_id,
                 "away_team_id": match.away_team_id,
                 "upset_index": upset_index,
-                "extra_time_prob": round(0.08 + 0.18 * (1 - pred.confidence), 4),
-                "penalty_prob": round(0.04 + 0.12 * (1 - pred.confidence), 4),
                 "symbolic_summary": self._symbolic_hint(symbolic),
                 "narrative_summary": "叙事轨用于提示士气、压力和黑马变量。",
                 "tactical_summary": "战术轨依据攻防强度差异生成克制判断。",
             }
         )
-        hs, aways = map(int, pred.predicted_score.split("-"))
+        hs, aways = map(int, sampled_prediction.predicted_score.split("-"))
         result = MatchResult(
             match_id=match.match_id,
             home_score=hs,
             away_score=aways,
-            winner_team_id=pred.winner_team_id,
+            winner_team_id=sampled_prediction.winner_team_id,
             went_to_penalties=(not allow_draw and hs == aways),
             source=pred.source,
         )
@@ -444,20 +491,19 @@ class OracleTournamentEngine:
         return standing.model_copy(update={"rows": rows})
 
     def _champion_probabilities(
-        self, teams: list[Team], champion_team_id: str | None
+        self,
+        teams: list[Team],
+        matches: list[Match],
+        features: dict,
     ) -> list[ChampionProbability]:
-        strengths = []
-        for team in teams:
-            score = team.elo_rating / max(1, team.fifa_rank)
-            if team.team_id == champion_team_id:
-                score *= 1.2
-            strengths.append((team.team_id, score))
-        total = sum(score for _, score in strengths) or 1
-        ranked = sorted(strengths, key=lambda item: item[1], reverse=True)[:12]
-        return [
-            ChampionProbability(team_id=team_id, probability=round(score / total, 4))
-            for team_id, score in ranked
-        ]
+        return run_world_cup_monte_carlo(
+            teams,
+            matches,
+            self.predictor,
+            features,
+            n_sims=self.monte_carlo_iterations,
+            seed=self.seed,
+        )
 
     def _dark_horses(self, teams: list[Team], narratives: list[NarrativeProfile]) -> list[dict]:
         team_map = {team.team_id: team for team in teams}

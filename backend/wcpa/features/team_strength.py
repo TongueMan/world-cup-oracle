@@ -20,8 +20,8 @@ def compute_team_strength(team: Team, weights: dict | None = None) -> TeamFeatur
     max_fifa_rank = 50
     max_elo = 2200
 
-    norm_fifa = 1 - (team.fifa_rank - 1) / max_fifa_rank
-    norm_elo = team.elo_rating / max_elo
+    norm_fifa = max(0.0, min(1.0, 1 - (team.fifa_rank - 1) / max_fifa_rank))
+    norm_elo = max(0.0, min(1.0, team.elo_rating / max_elo))
 
     strength = (
         weights["fifa_rank_score"] * norm_fifa
@@ -43,4 +43,8 @@ def compute_team_strength(team: Team, weights: dict | None = None) -> TeamFeatur
         defense=team.defense_score,
         world_cup_experience=team.world_cup_experience_score,
         squad_health=team.squad_health_score,
+        fifa_rank=team.fifa_rank,
+        elo_rating=team.elo_rating,
+        source_key=team.source_key,
+        source_url=team.source_url,
     )

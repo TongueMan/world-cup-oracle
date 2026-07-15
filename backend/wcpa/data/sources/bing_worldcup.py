@@ -708,7 +708,15 @@ def _extract_score(value: Any) -> int | None:
 
 
 def _is_placeholder(name: str | None) -> bool:
-    return bool(name and re.fullmatch(r"[WL]\d+", name.strip()))
+    text = str(name or "").strip()
+    return bool(
+        text
+        and (
+            re.fullmatch(r"[WL]\d+", text, re.IGNORECASE)
+            or text.upper() in {"TBD", "TBC", "UNKNOWN", "N/A", "NA"}
+            or text in {"待定", "待确认", "未确定"}
+        )
+    )
 
 
 TEAM_ID_BY_ZH_NAME = {

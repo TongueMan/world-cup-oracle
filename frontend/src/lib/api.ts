@@ -15,24 +15,50 @@ import type {
   AgentCapabilities,
   AgentLLMConfig,
   AgentMatchToolResponse,
+  PredictionRunResult,
+  PredictionSnapshot,
+  PredictionStageAvailability,
+  MatchEnvironment,
+  PredictionAgentReport,
 } from './types';
 
 const API_BASE = '/api';
 
+export class ApiError extends Error {
+  status: number;
+  detail: unknown;
+
+  constructor(status: number, statusText: string, detail: unknown) {
+    super(readableErrorMessage(status, statusText, detail));
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+function readableErrorMessage(status: number, statusText: string, detail: unknown) {
+  if (typeof detail === 'string') return detail;
+  if (detail && typeof detail === 'object') {
+    const payload = detail as { message?: unknown; status?: unknown };
+    if (typeof payload.message === 'string') return payload.message;
+    if (payload.status === 'verified_prediction_unavailable' || payload.status === 'published_prediction_unavailable') {
+      return '该阶段暂无通过验证的预测报告。';
+    }
+  }
+  return `${status} ${statusText}`;
+}
+
 async function fetchJSON<T>(url: string): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`);
   if (!res.ok) {
-    let detail = `${res.status} ${res.statusText}`;
+    let detail: unknown = `${res.status} ${res.statusText}`;
     try {
       const body = await res.json();
-      detail =
-        typeof body.detail === 'string'
-          ? body.detail
-          : JSON.stringify(body.detail ?? body);
+      detail = body.detail ?? body;
     } catch {
       // keep default detail
     }
-    throw new Error(detail);
+    throw new ApiError(res.status, res.statusText, detail);
   }
   return res.json() as Promise<T>;
 }
@@ -40,17 +66,14 @@ async function fetchJSON<T>(url: string): Promise<T> {
 async function postJSON<T>(url: string): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, { method: 'POST' });
   if (!res.ok) {
-    let detail = `${res.status} ${res.statusText}`;
+    let detail: unknown = `${res.status} ${res.statusText}`;
     try {
       const body = await res.json();
-      detail =
-        typeof body.detail === 'string'
-          ? body.detail
-          : JSON.stringify(body.detail ?? body);
+      detail = body.detail ?? body;
     } catch {
       // keep default detail
     }
-    throw new Error(detail);
+    throw new ApiError(res.status, res.statusText, detail);
   }
   return res.json() as Promise<T>;
 }
@@ -62,23 +85,31 @@ async function postBodyJSON<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    let detail = `${res.status} ${res.statusText}`;
+    let detail: unknown = `${res.status} ${res.statusText}`;
     try {
       const payload = await res.json();
-      detail =
-        typeof payload.detail === 'string'
-          ? payload.detail
-          : JSON.stringify(payload.detail ?? payload);
+      detail = payload.detail ?? payload;
     } catch {
       // keep default detail
     }
-    throw new Error(detail);
+    throw new ApiError(res.status, res.statusText, detail);
   }
   return res.json() as Promise<T>;
 }
 
 export const api = {
-  getTournament: () => fetchJSON<TournamentPrediction>('/predictions/tournament'),
+  getTournament: (anchor = 'current') =>
+    fetchJSON<TournamentPrediction>(`/predictions/tournament?anchor=${encodeURIComponent(anchor)}`),
+  getPredictionCandidate: (anchor = 'current') =>
+    fetchJSON<TournamentPrediction>(`/predictions/candidate?anchor=${encodeURIComponent(anchor)}`),
+  getPredictionSnapshots: () => fetchJSON<PredictionSnapshot[]>('/predictions/snapshots'),
+  getPredictionStages: () => fetchJSON<PredictionStageAvailability[]>('/predictions/stages'),
+  getPredictionSnapshot: (artifactId: string) =>
+    fetchJSON<TournamentPrediction>(`/predictions/snapshots/${encodeURIComponent(artifactId)}`),
+  getPredictionReport: (artifactId: string) =>
+    fetchJSON<PredictionAgentReport>(`/predictions/reports/${encodeURIComponent(artifactId)}`),
+  getArtifactMatch: (artifactId: string, matchId: string) =>
+    fetchJSON<MatchDetail>(`/predictions/artifacts/${encodeURIComponent(artifactId)}/matches/${encodeURIComponent(matchId)}`),
   getGroups: () => fetchJSON<GroupStanding[]>('/groups'),
   getGroup: (group: string) => fetchJSON<GroupStanding>(`/groups/${group}`),
   getMatch: (matchId: string) => fetchJSON<MatchDetail>(`/matches/${matchId}`),
@@ -114,6 +145,8 @@ export const api = {
   getWorldCupStandings: () => fetchJSON<WorldCupStanding[]>('/worldcup/standings'),
   getWorldCupPlayerStats: () => fetchJSON<WorldCupPlayerStat[]>('/worldcup/player-stats'),
   getWorldCupSyncStatus: () => fetchJSON<WorldCupSyncStatus>('/worldcup/sync/status'),
+  getMatchEnvironment: (matchId: string) =>
+    fetchJSON<MatchEnvironment>(`/worldcup/matches/${encodeURIComponent(matchId)}/environment`),
   getWorldCupHistoryEditions: () => fetchJSON<WorldCupHistoryEdition[]>('/worldcup/history/editions'),
   getWorldCupHistoryEdition: (year: number) =>
     fetchJSON<WorldCupHistoryEditionDetail>(`/worldcup/history/editions/${year}`),
@@ -140,9 +173,9 @@ export const api = {
     fetchJSON<WorldCupHistoryMatch[]>(`/worldcup/history/teams/${encodeURIComponent(team)}/matches`),
   getWorldCupHistoryFinals: () => fetchJSON<WorldCupHistoryMatch[]>('/worldcup/history/finals'),
   syncWorldCup: () => postJSON('/worldcup/admin/sync'),
-  runPrediction: (seed: number = 42, mode: string = 'balanced') =>
-    postJSON(`/predictions/run?seed=${seed}&mode=${mode}`),
-  runFullPrediction: (seed: number = 42, mode: string = 'balanced') =>
-    postJSON(`/predict/tournament?seed=${seed}&mode=${mode}`),
+  runPrediction: (anchor = 'current') =>
+    postJSON<PredictionRunResult>(`/predictions/run?anchor=${encodeURIComponent(anchor)}&seed=42&mode=professional&strict=true`),
+  runFullPrediction: (anchor = 'current') =>
+    postJSON<PredictionRunResult>(`/predict/tournament?anchor=${encodeURIComponent(anchor)}&seed=42&mode=professional&precompute_agents=false&strict=true`),
   health: () => fetchJSON<HealthStatus>('/health'),
 };

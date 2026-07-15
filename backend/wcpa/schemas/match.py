@@ -24,6 +24,10 @@ class Match(WCPABaseModel):
     venue: Optional[str] = None
     source: str = "fixture"
     status: str = "scheduled"  # scheduled/live/final/predicted
+    home_score: Optional[int] = Field(default=None, ge=0)
+    away_score: Optional[int] = Field(default=None, ge=0)
+    winner_team_id: Optional[str] = None
+    went_to_penalties: bool = False
 
 
 class MatchResult(WCPABaseModel):

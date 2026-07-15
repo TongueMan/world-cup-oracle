@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { AgentDrawer } from './components/AgentDrawer';
+import { AppHeader } from './components/AppHeader';
 import { api } from './lib/api';
 import type {
   AgentPageContext,
@@ -62,6 +63,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
   const [agentContext, setAgentContext] = useState<AgentPageContext>(defaultAgentContext('matches'));
+  const [agentSessionKey, setAgentSessionKey] = useState('page:matches');
   const [agentPrompt, setAgentPrompt] = useState('');
   const [robotPose, setRobotPose] = useState<RobotPose>('idle');
 
@@ -130,14 +132,30 @@ function App() {
     }
   }, [historyAwayTeam, historyHomeTeam, historyMode, historyYear]);
 
+  const pageAgentContext = useMemo(
+    () => pageAgentContextForTab(activeTab, {
+      matches,
+      bracket,
+      standings,
+      stats,
+      historyEditions,
+      historyFinals,
+      historyMatches,
+      historyMode,
+      historyYear,
+    }),
+    [activeTab, bracket, historyEditions, historyFinals, historyMatches, historyMode, historyYear, matches, standings, stats],
+  );
+
   useEffect(() => {
     void loadData();
   }, []);
 
   useEffect(() => {
-    setAgentContext(defaultAgentContext(activeTab));
+    setAgentContext(pageAgentContext);
+    setAgentSessionKey(pageSessionKey(activeTab));
     if (activeTab !== 'matches') window.scrollTo({ top: 0, behavior: 'auto' });
-  }, [activeTab]);
+  }, [activeTab, pageAgentContext]);
 
   useEffect(() => {
     if (activeTab !== 'history') return;
@@ -158,49 +176,19 @@ function App() {
     };
   }, []);
 
-  function openAgent(prompt: string, context: AgentPageContext = defaultAgentContext(activeTab)) {
+  function openAgent(prompt: string, context: AgentPageContext = pageAgentContext, sessionKey = sessionKeyForContext(context)) {
     setAgentPrompt(prompt);
     setAgentContext(context);
+    setAgentSessionKey(sessionKey);
     setAgentOpen(true);
   }
 
   const completeCount = matches.filter((match) => match.status === 'complete').length;
   const scheduledCount = matches.filter((match) => match.status === 'scheduled').length;
-  const statusText = syncStatus?.last_status === 'success'
-    ? '已更新'
-    : syncStatus?.last_status === 'partial'
-      ? '部分更新'
-      : '待更新';
-
   return (
     <div className="app-shell min-h-screen bg-[#07140b] text-white">
       <div className="stadium-backdrop" />
-      <header className="app-header border-b border-white/12 bg-[#061208]/92 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <div className="football-icon" aria-hidden="true" />
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-black tracking-wide">世界杯冠军预测智能体</h1>
-                <span className="rounded-full border border-emerald-200/35 bg-emerald-300/14 px-3 py-1 text-xs font-bold text-emerald-50">
-                  {statusText}
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-white/58">
-                数据来源：Bing 体育 · 最近更新：{formatDateTime(syncStatus?.last_success_at) || '暂无'}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleSync}
-            disabled={syncing}
-            className="rounded-xl bg-[#f6c845] px-4 py-2 text-sm font-black text-[#13210b] shadow-[0_0_28px_rgba(246,200,69,0.24)] transition hover:bg-[#ffe18a] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {syncing ? '更新中' : '更新赛程数据'}
-          </button>
-        </div>
-      </header>
+      <AppHeader syncStatus={syncStatus} syncing={syncing} onSync={handleSync} />
 
       <main className="app-main relative mx-auto max-w-7xl space-y-6 px-4 pb-8 sm:px-6 lg:px-8">
         <section className="hero-field overflow-hidden rounded-[28px] border border-white/15">
@@ -257,8 +245,8 @@ function App() {
               </div>
             ) : (
               <>
-                {activeTab === 'matches' && <MatchesView matches={matches} onAnalyze={(match) => openAgent('请分析这场比赛。', matchAgentContext(match, activeTab))} />}
-                {activeTab === 'bracket' && <BracketView matches={bracket} onAnalyze={(match) => openAgent('请分析这场淘汰赛。', matchAgentContext(match, activeTab))} />}
+                {activeTab === 'matches' && <MatchesView matches={matches} onAnalyze={(match) => openAgent(matchAnalysisPrompt(match), matchAgentContext(match, activeTab))} />}
+                {activeTab === 'bracket' && <BracketView matches={bracket} onAnalyze={(match) => openAgent(matchAnalysisPrompt(match), matchAgentContext(match, activeTab))} />}
                 {activeTab === 'standings' && <StandingsView standings={standings} />}
                 {activeTab === 'stats' && <StatsView stats={stats} />}
                 {activeTab === 'history' && (
@@ -288,7 +276,7 @@ function App() {
         type="button"
         className={`agent-floating-button robot-pose-${robotPose}`}
         aria-label="打开世界杯 AI 助手"
-        onClick={() => openAgent(agentContext.currentMatchId ? '请分析这场比赛。' : '我想围绕当前页面提问。', agentContext)}
+        onClick={() => openAgent('我想围绕当前页面提问。', pageAgentContext, pageSessionKey(activeTab))}
       >
         <span className="agent-robot-frame" aria-hidden="true">
           {ROBOT_IMAGE_POSES.map((pose) => (
@@ -303,6 +291,7 @@ function App() {
       </button>
       <AgentDrawer
         open={agentOpen}
+        sessionKey={agentSessionKey}
         context={agentContext}
         initialPrompt={agentPrompt}
         onClose={() => setAgentOpen(false)}
@@ -337,10 +326,50 @@ function MatchesView({ matches, onAnalyze }: { matches: WorldCupMatch[]; onAnaly
 }
 
 function BracketView({ matches, onAnalyze }: { matches: WorldCupMatch[]; onAnalyze: (match: WorldCupMatch) => void }) {
+  const layout = buildBracketLayout(matches);
+  if (matches.length === 0) return <EmptyState text="暂无赛程表数据。" />;
+
   return (
-    <div className="grid overflow-hidden rounded-3xl border border-white/10 bg-[#f4efea]/95 text-[#171c18] md:grid-cols-2">
-      {sortMatches(matches).map((match) => <MatchCard key={match.match_id} match={match} light onAnalyze={onAnalyze} />)}
-      {matches.length === 0 && <EmptyState text="暂无赛程表数据。" />}
+    <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-x-auto bg-white py-5 text-[#121712]">
+      <div className="relative mx-auto" style={{ width: layout.width, height: layout.height }}>
+        <div className="absolute left-0 right-0 top-0 text-sm font-black">
+          {layout.headers.map((header) => (
+            <div
+              key={header.key}
+              className="text-center text-sm font-black"
+              style={{ position: 'absolute', left: header.x, top: 0, width: header.width }}
+            >
+              {header.label}
+            </div>
+          ))}
+        </div>
+        <svg
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          viewBox={`0 0 ${layout.width} ${layout.height}`}
+          aria-hidden="true"
+        >
+          {layout.links.map((link) => (
+            <path
+              key={link.key}
+              d={link.d}
+              fill="none"
+              stroke="#c9c9c9"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+        </svg>
+        {layout.cards.map((card) => (
+          <div
+            key={card.key}
+            className="absolute"
+            style={{ left: card.x, top: card.y, width: card.width }}
+          >
+            <MatchCard match={card.match} light compact onAnalyze={onAnalyze} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -631,8 +660,21 @@ function MatchCard({
     ? 'border-black/8 bg-[#f4efea] text-[#151a16]'
     : 'border-white/12 bg-[#08210f]/74 text-white';
   const sizingClass = compact ? 'h-[112px] overflow-hidden p-3' : 'p-4';
+  const clickableClass = compact && onAnalyze ? 'cursor-pointer transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#d5b856]' : '';
+  const handleCompactKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!compact || !onAnalyze || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    onAnalyze(match);
+  };
+
   return (
-    <div className={`border ${sizingClass} ${cardClass}`}>
+    <div
+      className={`border ${sizingClass} ${cardClass} ${clickableClass}`}
+      role={compact && onAnalyze ? 'button' : undefined}
+      tabIndex={compact && onAnalyze ? 0 : undefined}
+      onClick={compact && onAnalyze ? () => onAnalyze(match) : undefined}
+      onKeyDown={handleCompactKeyDown}
+    >
       <div className="mb-3 flex items-center justify-between gap-3 text-xs opacity-70">
         <span>{matchLabel(match)}</span>
         <span>{match.status === 'complete' ? '全场' : formatMatchTime(match)}</span>
@@ -807,19 +849,304 @@ function formatChineseDate(date: Date) {
   return `${date.getMonth() + 1}月${date.getDate()}日${weekdays[date.getDay()]}`;
 }
 
+type BracketCardNode = {
+  key: string;
+  match: WorldCupMatch;
+  x: number;
+  y: number;
+  width: number;
+};
+
+type BracketHeaderNode = {
+  key: string;
+  label: string;
+  x: number;
+  width: number;
+};
+
+type BracketConnector = {
+  key: string;
+  d: string;
+};
+
+type BracketLayoutConfig = {
+  width: number;
+  height: number;
+  cardWidth: number;
+  finalWidth: number;
+  cardHeight: number;
+  leftX: Record<'R32' | 'R16' | 'QF' | 'SF' | 'Final', number>;
+  rightX: Record<'R32' | 'R16' | 'QF' | 'SF', number>;
+  y: Record<'R32' | 'R16' | 'QF' | 'SF' | 'Final', number[]>;
+};
+
+const BRACKET_LAYOUT: BracketLayoutConfig = {
+  width: 2520,
+  height: 1160,
+  cardWidth: 196,
+  finalWidth: 260,
+  cardHeight: 112,
+  leftX: {
+    R32: 80,
+    R16: 340,
+    QF: 600,
+    SF: 850,
+    Final: 1103,
+  },
+  rightX: {
+    SF: 1420,
+    QF: 1670,
+    R16: 1930,
+    R32: 2220,
+  },
+  y: {
+    R32: [78, 208, 338, 468, 598, 728, 858, 988],
+    R16: [143, 403, 663, 923],
+    QF: [273, 793],
+    SF: [533],
+    Final: [533],
+  },
+};
+
+function buildBracketLayout(matches: WorldCupMatch[]) {
+  const layout = BRACKET_LAYOUT;
+  const cards: BracketCardNode[] = [];
+  const links: BracketConnector[] = [];
+  const sortedMatches = sortMatches(matches);
+
+  const addCard = (key: string, match: WorldCupMatch, xPos: number, yPos: number, width = layout.cardWidth) => {
+    if (yPos == null) return;
+    cards.push({ key, match, x: xPos, y: yPos, width });
+  };
+
+  const final = sortedMatches.find((match) => match.stage === 'Final');
+  const childrenOf = (match: WorldCupMatch | undefined, stage?: string) => {
+    if (!match) return [];
+    return sortMatches(
+      sortedMatches.filter((row) => row.next_match_id === match.match_id && (!stage || row.stage === stage)),
+    );
+  };
+
+  const semifinals = childrenOf(final, 'SF');
+  const leftSF = semifinals[0];
+  const rightSF = semifinals[1];
+  const leftQF = childrenOf(leftSF, 'QF');
+  const rightQF = childrenOf(rightSF, 'QF');
+  const leftR16 = leftQF.flatMap((match) => childrenOf(match, 'R16'));
+  const rightR16 = rightQF.flatMap((match) => childrenOf(match, 'R16'));
+  const leftR32 = leftR16.flatMap((match) => childrenOf(match, 'R32'));
+  const rightR32 = rightR16.flatMap((match) => childrenOf(match, 'R32'));
+
+  leftR32.forEach((match, index) => addCard(`left-r32-${match.match_id}`, match, layout.leftX.R32, layout.y.R32[index]));
+  leftR16.forEach((match, index) => addCard(`left-r16-${match.match_id}`, match, layout.leftX.R16, layout.y.R16[index]));
+  leftQF.forEach((match, index) => addCard(`left-qf-${match.match_id}`, match, layout.leftX.QF, layout.y.QF[index]));
+  if (leftSF) addCard(`left-sf-${leftSF.match_id}`, leftSF, layout.leftX.SF, layout.y.SF[0]);
+  if (final) addCard(`final-${final.match_id}`, final, layout.leftX.Final, layout.y.Final[0], layout.finalWidth);
+  if (rightSF) addCard(`right-sf-${rightSF.match_id}`, rightSF, layout.rightX.SF, layout.y.SF[0]);
+  rightQF.forEach((match, index) => addCard(`right-qf-${match.match_id}`, match, layout.rightX.QF, layout.y.QF[index]));
+  rightR16.forEach((match, index) => addCard(`right-r16-${match.match_id}`, match, layout.rightX.R16, layout.y.R16[index]));
+  rightR32.forEach((match, index) => addCard(`right-r32-${match.match_id}`, match, layout.rightX.R32, layout.y.R32[index]));
+
+  if (cards.length <= (final ? 1 : 0) && sortedMatches.length > 1) {
+    return buildRoundFallbackBracketLayout(sortedMatches);
+  }
+
+  addBracketConnectors(links, layout, {
+    leftR32: leftR32.length,
+    leftR16: leftR16.length,
+    leftQF: leftQF.length,
+    leftSF: Boolean(leftSF),
+    final: Boolean(final),
+    rightSF: Boolean(rightSF),
+    rightQF: rightQF.length,
+    rightR16: rightR16.length,
+    rightR32: rightR32.length,
+  });
+
+  return {
+    width: layout.width,
+    height: layout.height,
+    headers: bracketHeaders(layout),
+    cards,
+    links,
+  };
+}
+
+function buildRoundFallbackBracketLayout(matches: WorldCupMatch[]) {
+  const layout = BRACKET_LAYOUT;
+  const cards: BracketCardNode[] = [];
+  const links: BracketConnector[] = [];
+  const byStage = {
+    R32: sortMatches(matches.filter((match) => match.stage === 'R32')),
+    R16: sortMatches(matches.filter((match) => match.stage === 'R16')),
+    QF: sortMatches(matches.filter((match) => match.stage === 'QF')),
+    SF: sortMatches(matches.filter((match) => match.stage === 'SF')),
+    Final: sortMatches(matches.filter((match) => match.stage === 'Final')),
+  };
+  const split = <T,>(items: T[]) => [items.slice(0, Math.ceil(items.length / 2)), items.slice(Math.ceil(items.length / 2))];
+  const [leftR32, rightR32] = split(byStage.R32);
+  const [leftR16, rightR16] = split(byStage.R16);
+  const [leftQF, rightQF] = split(byStage.QF);
+  const [leftSF, rightSF] = split(byStage.SF);
+  const addCard = (key: string, match: WorldCupMatch, xPos: number, yPos: number, width = layout.cardWidth) => {
+    if (yPos == null) return;
+    cards.push({ key, match, x: xPos, y: yPos, width });
+  };
+
+  leftR32.forEach((match, index) => addCard(`fallback-left-r32-${match.match_id}`, match, layout.leftX.R32, layout.y.R32[index]));
+  leftR16.forEach((match, index) => addCard(`fallback-left-r16-${match.match_id}`, match, layout.leftX.R16, layout.y.R16[index]));
+  leftQF.forEach((match, index) => addCard(`fallback-left-qf-${match.match_id}`, match, layout.leftX.QF, layout.y.QF[index]));
+  leftSF.forEach((match, index) => addCard(`fallback-left-sf-${match.match_id}`, match, layout.leftX.SF, layout.y.SF[index]));
+  if (byStage.Final[0]) addCard(`fallback-final-${byStage.Final[0].match_id}`, byStage.Final[0], layout.leftX.Final, layout.y.Final[0], layout.finalWidth);
+  rightSF.forEach((match, index) => addCard(`fallback-right-sf-${match.match_id}`, match, layout.rightX.SF, layout.y.SF[index]));
+  rightQF.forEach((match, index) => addCard(`fallback-right-qf-${match.match_id}`, match, layout.rightX.QF, layout.y.QF[index]));
+  rightR16.forEach((match, index) => addCard(`fallback-right-r16-${match.match_id}`, match, layout.rightX.R16, layout.y.R16[index]));
+  rightR32.forEach((match, index) => addCard(`fallback-right-r32-${match.match_id}`, match, layout.rightX.R32, layout.y.R32[index]));
+
+  addBracketConnectors(links, layout, {
+    leftR32: leftR32.length,
+    leftR16: leftR16.length,
+    leftQF: leftQF.length,
+    leftSF: leftSF.length > 0,
+    final: byStage.Final.length > 0,
+    rightSF: rightSF.length > 0,
+    rightQF: rightQF.length,
+    rightR16: rightR16.length,
+    rightR32: rightR32.length,
+  });
+
+  return {
+    width: layout.width,
+    height: layout.height,
+    headers: bracketHeaders(layout),
+    cards,
+    links,
+  };
+}
+
+function addBracketConnectors(
+  links: BracketConnector[],
+  layout: BracketLayoutConfig,
+  counts: {
+    leftR32: number;
+    leftR16: number;
+    leftQF: number;
+    leftSF: boolean;
+    final: boolean;
+    rightSF: boolean;
+    rightQF: number;
+    rightR16: number;
+    rightR32: number;
+  },
+) {
+  const centerOf = (yPos: number) => yPos + layout.cardHeight / 2;
+  const addLeftPairLinks = (fromX: number, fromYs: number[], toX: number, toYs: number[], key: string) => {
+    for (let index = 0; index < toYs.length; index += 1) {
+      const y1 = fromYs[index * 2];
+      const y2 = fromYs[index * 2 + 1];
+      const targetY = toYs[index];
+      if (y1 == null || y2 == null || targetY == null) continue;
+      const sourceX = fromX + layout.cardWidth;
+      const joinX = sourceX + 42;
+      const sourceY1 = centerOf(y1);
+      const sourceY2 = centerOf(y2);
+      const targetCenterY = centerOf(targetY);
+      links.push({
+        key: `${key}-${index}`,
+        d: [
+          `M ${sourceX} ${sourceY1} H ${joinX}`,
+          `M ${sourceX} ${sourceY2} H ${joinX}`,
+          `M ${joinX} ${sourceY1} V ${sourceY2}`,
+          `M ${joinX} ${targetCenterY} H ${toX}`,
+        ].join(' '),
+      });
+    }
+  };
+  const addRightPairLinks = (fromX: number, fromYs: number[], toX: number, toYs: number[], key: string) => {
+    for (let index = 0; index < toYs.length; index += 1) {
+      const y1 = fromYs[index * 2];
+      const y2 = fromYs[index * 2 + 1];
+      const targetY = toYs[index];
+      if (y1 == null || y2 == null || targetY == null) continue;
+      const sourceX = fromX;
+      const joinX = sourceX - 42;
+      const targetX = toX + layout.cardWidth;
+      const sourceY1 = centerOf(y1);
+      const sourceY2 = centerOf(y2);
+      const targetCenterY = centerOf(targetY);
+      links.push({
+        key: `${key}-${index}`,
+        d: [
+          `M ${sourceX} ${sourceY1} H ${joinX}`,
+          `M ${sourceX} ${sourceY2} H ${joinX}`,
+          `M ${joinX} ${sourceY1} V ${sourceY2}`,
+          `M ${joinX} ${targetCenterY} H ${targetX}`,
+        ].join(' '),
+      });
+    }
+  };
+
+  addLeftPairLinks(layout.leftX.R32, layout.y.R32.slice(0, counts.leftR32), layout.leftX.R16, layout.y.R16.slice(0, counts.leftR16), 'left-r32-r16');
+  addLeftPairLinks(layout.leftX.R16, layout.y.R16.slice(0, counts.leftR16), layout.leftX.QF, layout.y.QF.slice(0, counts.leftQF), 'left-r16-qf');
+  addLeftPairLinks(layout.leftX.QF, layout.y.QF.slice(0, counts.leftQF), layout.leftX.SF, counts.leftSF ? layout.y.SF : [], 'left-qf-sf');
+  if (counts.leftSF && counts.final) {
+    links.push({
+      key: 'left-sf-final',
+      d: `M ${layout.leftX.SF + layout.cardWidth} ${centerOf(layout.y.SF[0])} H ${layout.leftX.Final}`,
+    });
+  }
+
+  addRightPairLinks(layout.rightX.R32, layout.y.R32.slice(0, counts.rightR32), layout.rightX.R16, layout.y.R16.slice(0, counts.rightR16), 'right-r32-r16');
+  addRightPairLinks(layout.rightX.R16, layout.y.R16.slice(0, counts.rightR16), layout.rightX.QF, layout.y.QF.slice(0, counts.rightQF), 'right-r16-qf');
+  addRightPairLinks(layout.rightX.QF, layout.y.QF.slice(0, counts.rightQF), layout.rightX.SF, counts.rightSF ? layout.y.SF : [], 'right-qf-sf');
+  if (counts.rightSF && counts.final) {
+    links.push({
+      key: 'right-sf-final',
+      d: `M ${layout.rightX.SF} ${centerOf(layout.y.SF[0])} H ${layout.leftX.Final + layout.finalWidth}`,
+    });
+  }
+}
+
+function bracketHeaders(layout: BracketLayoutConfig): BracketHeaderNode[] {
+  return [
+    { key: 'left-r32', label: '32 强赛', x: layout.leftX.R32, width: layout.cardWidth },
+    { key: 'left-r16', label: '16 强赛', x: layout.leftX.R16, width: layout.cardWidth },
+    { key: 'left-qf', label: '四分之一决赛', x: layout.leftX.QF, width: layout.cardWidth },
+    { key: 'left-sf', label: '半决赛', x: layout.leftX.SF, width: layout.cardWidth },
+    { key: 'final', label: '决赛', x: layout.leftX.Final, width: layout.finalWidth },
+    { key: 'right-sf', label: '半决赛', x: layout.rightX.SF, width: layout.cardWidth },
+    { key: 'right-qf', label: '四分之一决赛', x: layout.rightX.QF, width: layout.cardWidth },
+    { key: 'right-r16', label: '16 强赛', x: layout.rightX.R16, width: layout.cardWidth },
+    { key: 'right-r32', label: '32 强赛', x: layout.rightX.R32, width: layout.cardWidth },
+  ];
+}
+
 function splitStats(stats: WorldCupPlayerStat[]): Record<StatTab, WorldCupPlayerStat[]> {
   const cleaned = stats.filter((stat) => stat.value != null && stat.title && stat.title !== '球员');
   const byCategory = (category: string) => cleaned.filter((stat) => stat.category === category);
-  const goals = byCategory('进球数');
-  const assists = byCategory('助攻');
-  const yellow = byCategory('黄牌');
-  const red = byCategory('红牌');
+  const goals = normalizeStatRows(byCategory('进球数'));
+  const assists = normalizeStatRows(byCategory('助攻'));
+  const yellow = normalizeStatRows(byCategory('黄牌'));
+  const red = normalizeStatRows(byCategory('红牌'));
+  const fallback = normalizeStatRows(cleaned);
   return {
-    goals: goals.length ? goals : cleaned.slice(0, 20),
-    assists: assists.length ? assists : cleaned.slice(20, 40),
-    yellow: yellow.length ? yellow : cleaned.slice(40, 60),
-    red: red.length ? red : cleaned.slice(60, 80),
+    goals: goals.length ? goals : fallback.slice(0, 20),
+    assists: assists.length ? assists : fallback.slice(20, 40),
+    yellow: yellow.length ? yellow : fallback.slice(40, 60),
+    red: red.length ? red : fallback.slice(60, 80),
   };
+}
+
+function normalizeStatRows(rows: WorldCupPlayerStat[]) {
+  const bestByPlayer = new Map<string, WorldCupPlayerStat>();
+  for (const row of rows) {
+    const key = `${playerName(row).toLocaleLowerCase()}|${playerTeam(row).toLocaleLowerCase()}`;
+    const existing = bestByPlayer.get(key);
+    if (!existing || Number(row.value ?? 0) > Number(existing.value ?? 0)) {
+      bestByPlayer.set(key, row);
+    }
+  }
+  return [...bestByPlayer.values()].sort((a, b) => Number(b.value ?? 0) - Number(a.value ?? 0));
 }
 
 function playerName(stat: WorldCupPlayerStat) {
@@ -957,8 +1284,195 @@ function defaultAgentContext(activeTab: TabKey): AgentPageContext {
     currentPage: 'worldcup-dashboard',
     activeTab,
     summary: `当前页面：${TABS.find((tab) => tab.key === activeTab)?.label ?? activeTab}`,
-    data: {},
+    data: { scope: 'page', tab: activeTab },
   };
+}
+
+function pageSessionKey(activeTab: TabKey) {
+  return `page:${activeTab}`;
+}
+
+function sessionKeyForContext(context: AgentPageContext) {
+  return context.currentMatchId ? `match:${context.currentMatchId}` : pageSessionKey((context.activeTab as TabKey | undefined) ?? 'matches');
+}
+
+function pageAgentContextForTab(
+  activeTab: TabKey,
+  data: {
+    matches: WorldCupMatch[];
+    bracket: WorldCupMatch[];
+    standings: WorldCupStanding[];
+    stats: WorldCupPlayerStat[];
+    historyEditions: WorldCupHistoryEdition[];
+    historyFinals: WorldCupHistoryMatch[];
+    historyMatches: WorldCupHistoryMatch[];
+    historyMode: HistoryViewMode;
+    historyYear: number;
+  },
+): AgentPageContext {
+  const base = defaultAgentContext(activeTab);
+  if (activeTab === 'matches') {
+    const complete = data.matches.filter((match) => match.status === 'complete').length;
+    const scheduled = data.matches.filter((match) => match.status === 'scheduled').length;
+    return {
+      ...base,
+      summary: `比赛页：${data.matches.length} 场，已赛 ${complete}，未赛 ${scheduled}`,
+      data: {
+        scope: 'page',
+        tab: activeTab,
+        totalMatches: data.matches.length,
+        completeMatches: complete,
+        scheduledMatches: scheduled,
+        sampleMatches: data.matches.slice(0, 8).map(compactMatchForAgent),
+      },
+    };
+  }
+  if (activeTab === 'bracket') {
+    const placeholderCount = data.bracket.filter(hasPlaceholderTeam).length;
+    const currentContenders = currentBracketContenders(data.bracket);
+    const eliminatedTeams = eliminatedBracketTeams(data.bracket, currentContenders);
+    return {
+      ...base,
+      summary: `赛程表页：${data.bracket.length} 场淘汰赛，当前仍存活 ${currentContenders.length} 队，${placeholderCount} 场含占位路径`,
+      data: {
+        scope: 'page',
+        tab: activeTab,
+        totalMatches: data.bracket.length,
+        placeholderMatches: placeholderCount,
+        currentContenders,
+        eliminatedTeams,
+        currentRoundMatches: currentRoundMatches(data.bracket).map(compactMatchForAgent),
+        sampleMatches: data.bracket.slice(0, 12).map(compactMatchForAgent),
+      },
+    };
+  }
+  if (activeTab === 'standings') {
+    return {
+      ...base,
+      summary: `排名页：${data.standings.length} 条小组排名记录`,
+      data: {
+        scope: 'page',
+        tab: activeTab,
+        totalStandings: data.standings.length,
+        sampleStandings: data.standings.slice(0, 12).map((row) => ({
+          group: row.group_name,
+          team: displayTeamName(row.team_name_raw),
+          points: row.points,
+          played: row.played,
+          goalDifference: row.goal_difference,
+        })),
+      },
+    };
+  }
+  if (activeTab === 'stats') {
+    return {
+      ...base,
+      summary: `统计信息页：${data.stats.length} 条球员统计`,
+      data: {
+        scope: 'page',
+        tab: activeTab,
+        totalStats: data.stats.length,
+        sampleStats: data.stats.slice(0, 12).map((row) => ({
+          title: row.title,
+          category: row.category,
+          value: row.value,
+          team: row.team_name,
+        })),
+      },
+    };
+  }
+  return {
+    ...base,
+    summary: `历史世界杯页：${data.historyEditions.length} 届赛事，当前 ${data.historyYear}，模式 ${data.historyMode}`,
+    data: {
+      scope: 'page',
+      tab: activeTab,
+      historyMode: data.historyMode,
+      selectedYear: data.historyYear,
+      editionCount: data.historyEditions.length,
+      finalsCount: data.historyFinals.length,
+      loadedMatchCount: data.historyMatches.length,
+      sampleFinals: data.historyFinals.slice(0, 8).map((match) => ({
+        year: match.year,
+        home: historyTeamName(match.home_team, match.home_team_zh),
+        away: historyTeamName(match.away_team, match.away_team_zh),
+        score: historyScore(match),
+      })),
+    },
+  };
+}
+
+function compactMatchForAgent(match: WorldCupMatch) {
+  return {
+    matchId: shortMatchId(match.match_id),
+    stage: match.stage,
+    status: match.status,
+    kickoff: match.kickoff_label || match.kickoff_time,
+    home: displayTeamName(match.home_team_raw ?? match.home_team_id ?? '待定'),
+    away: displayTeamName(match.away_team_raw ?? match.away_team_id ?? '待定'),
+    score: match.home_score == null || match.away_score == null ? null : `${match.home_score}-${match.away_score}`,
+    nextMatchId: match.next_match_id ? shortMatchId(match.next_match_id) : null,
+    hasPlaceholder: hasPlaceholderTeam(match),
+  };
+}
+
+function currentRoundMatches(matches: WorldCupMatch[]) {
+  const stageOrder = ['Final', 'SF', 'QF', 'R16', 'R32'];
+  for (const stage of stageOrder) {
+    const rows = sortMatches(matches.filter((match) => match.stage === stage && match.status !== 'complete' && match.status !== 'final'));
+    if (rows.length > 0) return rows;
+  }
+  for (const stage of stageOrder) {
+    const rows = sortMatches(matches.filter((match) => match.stage === stage));
+    if (rows.length > 0) return rows;
+  }
+  return [];
+}
+
+function currentBracketContenders(matches: WorldCupMatch[]) {
+  return uniqueStrings(currentRoundMatches(matches).flatMap(matchConcreteTeams));
+}
+
+function eliminatedBracketTeams(matches: WorldCupMatch[], contenders: string[]) {
+  const contenderSet = new Set(contenders);
+  return uniqueStrings(
+    matches
+      .filter((match) => match.status === 'complete' || match.status === 'final')
+      .flatMap(matchConcreteTeams)
+      .filter((team) => !contenderSet.has(team)),
+  );
+}
+
+function matchConcreteTeams(match: WorldCupMatch) {
+  return [
+    concreteTeamName(match.home_team_raw, match.home_team_id),
+    concreteTeamName(match.away_team_raw, match.away_team_id),
+  ].filter(Boolean) as string[];
+}
+
+function concreteTeamName(raw?: string | null, id?: string | null) {
+  const value = raw || id || '';
+  if (!value || /^[WL]\d{2,3}$/i.test(value)) return '';
+  return displayTeamName(value);
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function matchAnalysisPrompt(match: WorldCupMatch) {
+  if (hasPlaceholderTeam(match)) {
+    return '请联网检索后做这场淘汰赛的路径情景推演和赛前预测：先说明 W/L 占位来源，再按可能晋级路径分析胜负倾向、关键变量和不确定性，不要把占位符当成确定球队。';
+  }
+  if (match.status !== 'complete' && match.status !== 'final') {
+    return '请联网检索后做这场未赛比赛的赛前预测：给出胜负倾向、可能比分、关键变量、风险和需要确认的信息。';
+  }
+  return '请分析这场比赛。';
+}
+
+function hasPlaceholderTeam(match: WorldCupMatch) {
+  return [match.home_team_id, match.away_team_id, match.home_team_raw, match.away_team_raw]
+    .some((value) => /^[WL]\d{2,3}$/i.test(String(value ?? '').trim()));
 }
 
 function matchAgentContext(match: WorldCupMatch, activeTab: TabKey): AgentPageContext {

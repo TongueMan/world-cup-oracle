@@ -19,9 +19,27 @@ PREFERRED_DOMAINS = {
     "apnews.com",
     "nytimes.com",
     "theathletic.com",
+    "foxsports.com",
+    "si.com",
+    "standard.co.uk",
+    "the-independent.com",
+    "sports.yahoo.com",
+    "theanalyst.com",
+    "rotowire.com",
 }
 
 OFFICIAL_DOMAINS = {"fifa.com", "uefa.com"}
+TEAM_OFFICIAL_DOMAINS = {
+    "afa.com.ar",
+    "fff.fr",
+    "thefa.com",
+    "cbf.com.br",
+    "sefutbol.com",
+    "dfb.de",
+    "onsoranje.nl",
+    "fpf.pt",
+    "ussoccer.com",
+}
 WIRE_DOMAINS = {"reuters.com", "apnews.com"}
 VIDEO_DOMAIN_HINTS = {"youtube.com", "youtu.be", "foxsports.com/video"}
 SOCIAL_DOMAIN_HINTS = {"facebook.com", "x.com", "twitter.com", "instagram.com", "tiktok.com"}
@@ -65,6 +83,8 @@ def source_quality_score(url: str) -> float:
         return 0.0
     if any(hint in domain for hint in BLOCKED_DOMAIN_HINTS):
         return 0.05
+    if any(domain == item or domain.endswith("." + item) for item in OFFICIAL_DOMAINS | TEAM_OFFICIAL_DOMAINS):
+        return 0.98
     if any(domain == item or domain.endswith("." + item) for item in PREFERRED_DOMAINS):
         return 0.95
     if domain.endswith((".edu", ".gov")):
@@ -73,7 +93,7 @@ def source_quality_score(url: str) -> float:
 
 
 def source_type_for_domain(domain: str) -> str:
-    if any(domain == item or domain.endswith("." + item) for item in OFFICIAL_DOMAINS):
+    if any(domain == item or domain.endswith("." + item) for item in OFFICIAL_DOMAINS | TEAM_OFFICIAL_DOMAINS):
         return "official"
     if any(domain == item or domain.endswith("." + item) for item in WIRE_DOMAINS):
         return "wire"

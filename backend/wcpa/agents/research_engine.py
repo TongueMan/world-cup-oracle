@@ -12,10 +12,17 @@ from wcpa.agents.agent_context_builder import AgentContextError, build_match_con
 from wcpa.agents.chat import sse_event
 from wcpa.agents.firecrawl_client import FirecrawlCallError, FirecrawlConfigError
 from wcpa.agents.providers import ProviderCallError, ProviderConfigError, resolve_provider, stream_chat_completion
+from wcpa.agents.prediction_bridge import (
+    build_agent_match_prediction,
+    format_agent_match_prediction,
+    load_bound_match_prediction,
+    load_tournament_prediction_context,
+)
 from wcpa.agents.research_quality import evaluate_research_answer
 from wcpa.agents.search_policy import SearchBudget, evaluate_search_authorization, load_search_deployment_config
 from wcpa.agents.search_service import search_web
 from wcpa.agents.source_quality import QualifiedSource, source_with_relevance
+from wcpa.prediction.satisfaction import evaluate_prediction_satisfaction
 from wcpa.schemas.agent_chat import AgentResearchRequest
 
 ResearchIntent = Literal[
@@ -63,6 +70,7 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
 
     plan = build_research_plan(request, context, {"enabled": False})
     context["intent"] = plan.intent
+    context["message"] = request.message
     yield _reasoning_event(
         "plan",
         "拆解问题",
@@ -84,8 +92,12 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
     search_error = ""
     auth = evaluate_search_authorization("chat", search_mode != "local_only")
     if search_mode == "required" and not auth.can_search:
-        yield sse_event("error", {"message": f"联网研究不可用：{auth.message}"})
-        return
+        search_error = f"联网研究不可用：{auth.message}"
+        if not _is_prediction_question(request.message):
+            yield sse_event("error", {"message": search_error})
+            return
+        filtered.append({"title": "Search unavailable", "reason": search_error, "sourceType": "search_error"})
+        yield sse_event("search_warning", {"message": search_error})
 
     if search_mode != "local_only" and auth.can_search:
         yield _reasoning_event(
@@ -133,6 +145,29 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
     if sources:
         yield sse_event("sources", {"results": sources})
 
+    if plan.output_contract.get("prediction_required"):
+        conversation = " ".join(
+            [item.content for item in request.history[-6:] if item.role == "user"]
+            + [request.message]
+        )
+        if _is_tournament_question(conversation):
+            page = context.get("page") or {}
+            context["tournament_prediction"] = load_tournament_prediction_context(
+                [str(item) for item in page.get("currentContenders") or []],
+                artifact_id=str(page.get("artifactId") or "") or None,
+                expected_anchor=str(page.get("anchorStage") or "") or None,
+            )
+        else:
+            if not context.get("prediction"):
+                prediction = build_agent_match_prediction(
+                    context,
+                    sources,
+                    search_attempted=search_mode != "local_only",
+                    search_error=search_error,
+                )
+                if prediction is not None:
+                    context["prediction"] = prediction.model_dump(mode="json")
+
     yield _reasoning_event(
         "compose",
         "组织答案",
@@ -165,6 +200,24 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
         "quality_check",
         {"passed": quality.passed, "score": quality.total, "dimensions": quality.dimensions, "issues": quality.issues},
     )
+    prediction_quality = None
+    structured_prediction = _prediction_from_context(context)
+    if structured_prediction is not None:
+        prediction_quality = evaluate_prediction_satisfaction(
+            structured_prediction,
+            final_answer,
+            placeholder_expected=_has_placeholder_match(context),
+        )
+        yield sse_event(
+            "prediction_quality",
+            {
+                "passed": prediction_quality.passed,
+                "automaticScore": prediction_quality.automatic_score,
+                "dimensions": prediction_quality.dimensions,
+                "hardFailures": prediction_quality.hard_failures,
+                "issues": prediction_quality.issues,
+            },
+        )
     yield sse_event(
         "done",
         {
@@ -178,6 +231,17 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
                 "filteredSources": filtered[:10],
                 "searchError": search_error,
                 "quality": quality.__dict__,
+                "predictionQuality": (
+                    {
+                        "passed": prediction_quality.passed,
+                        "automaticScore": prediction_quality.automatic_score,
+                        "dimensions": prediction_quality.dimensions,
+                        "hardFailures": prediction_quality.hard_failures,
+                        "issues": prediction_quality.issues,
+                    }
+                    if prediction_quality
+                    else None
+                ),
                 "rag": plan.rag_status,
             },
         },
@@ -197,19 +261,21 @@ def build_research_plan(
     environment = context.get("environment") or {}
     bracket = context.get("bracket") or {}
 
-    intent: ResearchIntent = request.tool_intent if request.tool_intent != "general" else "match_analysis"
+    page_scope = context.get("scope") in {"page", "tournament"}
+    intent: ResearchIntent = request.tool_intent if request.tool_intent != "general" else ("general" if page_scope else "match_analysis")
     if _is_head_to_head_history_question(intent_text):
         intent = "head_to_head_history"
     elif _is_tournament_question(intent_text):
         intent = "general"
     elif _is_pitch_question(intent_text) or request.tool_intent == "weather_environment":
         intent = "weather_environment"
-    elif "previous" in lowered or "涓€杞" in message or "上一" in message:
+    elif "previous" in lowered or "上一" in message:
         intent = "previous_match_report"
 
-    home = str(match.get("home_team_raw") or request.context.data.get("home_team_raw") or "Brazil")
-    away = str(match.get("away_team_raw") or request.context.data.get("away_team_raw") or "Norway")
-    stage = str(match.get("stage") or request.context.data.get("stage") or "World Cup")
+    page = context.get("page") or {}
+    home = str(match.get("home_team_raw") or request.context.data.get("home_team_raw") or request.context.data.get("homeTeam") or "")
+    away = str(match.get("away_team_raw") or request.context.data.get("away_team_raw") or request.context.data.get("awayTeam") or "")
+    stage = str(match.get("stage") or request.context.data.get("stage") or page.get("tab") or "World Cup")
     venue = ((environment.get("venue") or {}) if isinstance(environment.get("venue"), dict) else {})
     venue_name = str(venue.get("venue_name") or "Lumen Field")
     tournament_name = str(venue.get("tournament_name") or "Seattle Stadium")
@@ -244,14 +310,23 @@ def build_research_plan(
             f"{home} {away} injuries lineup official",
             f"{home} {away} tactical preview",
         ]
-    else:
+    elif page_scope and not match:
+        page_label = str(request.context.summary or page.get("tab") or "World Cup dashboard")
         queries = [
-            f"{home} {away} {stage} official match preview",
-            f"{home} {away} injuries lineup official",
-            f"{home} {away} tactical analysis",
-            f"{home} {away} head to head World Cup",
-            f"{home} {away} latest news Reuters ESPN",
-            f"{home} {away} form guide FIFA",
+            f"2026 FIFA World Cup {page_label} predictions schedule standings analysis",
+            "2026 FIFA World Cup winner prediction favorites official",
+            "2026 FIFA World Cup knockout path contenders",
+            "2026 FIFA World Cup latest team news injuries lineup",
+        ]
+    else:
+        matchup = f"{home} {away}".strip() or "2026 FIFA World Cup"
+        queries = [
+            f"{matchup} {stage} official match preview",
+            f"{matchup} injuries lineup official",
+            f"{matchup} tactical analysis",
+            f"{matchup} head to head World Cup",
+            f"{matchup} latest news Reuters ESPN",
+            f"{matchup} form guide FIFA",
         ]
 
     output_contract = {
@@ -259,6 +334,20 @@ def build_research_plan(
         "scorelines_only": "scoreline" in lowered,
         "no_citations": not bool(context.get("sources")),
     }
+    if _is_prediction_question(intent_text):
+        output_contract["prediction_required"] = True
+    if _is_tournament_question(intent_text):
+        output_contract["prediction_shape"] = (
+            "必须给出明确冠军倾向，不允许以数据不足为由拒答；"
+            "至少包含第一选择、2-4 个竞争者、概率/置信度区间、核心理由、反转条件和事实边界。"
+        )
+        current_contenders = page.get("currentContenders") if isinstance(page.get("currentContenders"), list) else []
+        eliminated_teams = page.get("eliminatedTeams") if isinstance(page.get("eliminatedTeams"), list) else []
+        if current_contenders:
+            output_contract["current_contenders_only"] = current_contenders
+            output_contract["probability_instruction"] = "如果用户问剩余球队概率，只能在 current_contenders_only 中分配冠军概率；不要把 eliminated_teams 当作争冠候选。"
+        if eliminated_teams:
+            output_contract["eliminated_teams"] = eliminated_teams[:24]
     if _wants_facts_only(message):
         output_contract["concise"] = True
 
@@ -360,7 +449,10 @@ def _research_messages(
         "If placeholders such as W101/L102 appear, explain that they are bracket slots, not confirmed teams. "
         "If local data lacks historical head-to-head records, say only that local data does not include them; never infer the teams never met. "
         "For head-to-head history questions, prioritize previous meeting dates, competitions and scores over match-preview analysis. "
-        "不得点名具体球员/教练作为当前事实 unless the provided context or sources support it."
+        "不得点名具体球员/教练作为当前事实 unless the provided context or sources support it. "
+        "For prediction questions, do not refuse just because the event is future or uncertain; make a bounded forecast with confidence and caveats. "
+        "Do not provide betting advice, stake sizing, or guaranteed-outcome language. "
+        "If output_requirements.current_contenders_only is provided, restrict title-probability forecasts to those teams only."
     )
     user_history = [item.content for item in request.history if item.role == "user"][-6:]
     payload = {
@@ -393,6 +485,8 @@ def _finalize_answer(
         static_answer = _precomputed_final_answer(request, context, plan, sources)
         if static_answer is not None:
             return static_answer
+        if (plan.bracket_context.get("has_placeholders") or _has_placeholder_match(context)) and not sources:
+            return _bracket_scenario_answer(context, sources)
 
     available = {int(source.get("citationId") or 0) for source in sources if source.get("citationId")}
     if not available:
@@ -402,6 +496,17 @@ def _finalize_answer(
     answer = answer.replace("adopted_sources", "sources")
     if request:
         answer = _remove_unrequested_player_noise(answer, request.message)
+    if request and plan and plan.output_contract.get("prediction_required") and _prediction_answer_needs_repair(answer):
+        if _is_tournament_question(request.message):
+            return _tournament_prediction_answer(context, request, sources)
+        prediction = _prediction_from_context(context)
+        if prediction is not None:
+            return format_agent_match_prediction(
+                prediction,
+                _team_label(context, "home"),
+                _team_label(context, "away"),
+                len(sources),
+            )
     return answer.strip()
 
 
@@ -411,12 +516,14 @@ def _precomputed_final_answer(
     plan: ResearchPlan,
     sources: list[dict[str, Any]],
 ) -> str | None:
-    if plan.bracket_context.get("has_placeholders") or _has_placeholder_match(context):
+    if (plan.bracket_context.get("has_placeholders") or _has_placeholder_match(context)) and _is_placeholder_identity_question(request.message):
         return _bracket_placeholder_answer(context, request, sources)
     if _is_pitch_question(request.message) and not _has_pitch_support(context, sources):
         return _pitch_boundary_answer(context, request, sources)
     if plan.output_contract.get("facts_only"):
         return _facts_only_answer(context, request, plan, sources)
+    if _is_tournament_question(request.message) and not (context.get("tournament_prediction") or {}).get("rows"):
+        return _tournament_prediction_answer(context, request, sources)
     if plan.intent == "previous_match_report":
         return _previous_match_answer(context, request, sources)
     return None
@@ -430,6 +537,10 @@ def _deterministic_research_answer(
 ) -> str:
     match = context.get("match") or {}
     label = _match_label(match) or "current question"
+    if context.get("intent") == "general" and _is_tournament_question(str(context.get("message") or "")):
+        return _tournament_prediction_answer(context, None, sources)
+    if context.get("scope") in {"page", "tournament"} and not match:
+        return _page_context_answer(context, sources, reason)
     if context.get("intent") == "head_to_head_history":
         return "\n".join(
             [
@@ -438,6 +549,16 @@ def _deterministic_research_answer(
                 "这不能推出两队历史上从未交手；需要联网核验历史交锋数据库、足协资料或权威比赛档案。",
                 "请开启联网搜索，或在问题中明确要求联网检索历史交锋结果。",
             ]
+        )
+    if (context.get("bracket") or {}).get("has_placeholders") or _has_placeholder_match(context):
+        return _bracket_scenario_answer(context, sources, reason)
+    prediction = _prediction_from_context(context)
+    if prediction is not None:
+        return format_agent_match_prediction(
+            prediction,
+            _team_label(context, "home"),
+            _team_label(context, "away"),
+            len(sources),
         )
     lines = [
         "### 一句话判断",
@@ -480,6 +601,119 @@ def _previous_match_answer(context: dict[str, Any], request: AgentResearchReques
     return "比利时上一轮需要结合本地晋级路径说明；可重点核对塞内加尔、比分和晋级方式，再谈对当前比赛的影响。"
 
 
+def _page_context_answer(context: dict[str, Any], sources: list[dict[str, Any]], reason: str = "") -> str:
+    page = context.get("page") or {}
+    tab = page.get("tab") or "当前页面"
+    lines = [
+        "### 当前页面概览",
+        f"- 页面：{tab}",
+    ]
+    if page.get("totalMatches") is not None:
+        lines.append(f"- 比赛：共 {page.get('totalMatches')} 场，已赛 {page.get('completeMatches', 0)} 场，未赛 {page.get('scheduledMatches', 0)} 场。")
+    if page.get("placeholderMatches") is not None:
+        lines.append(f"- 淘汰赛占位：{page.get('placeholderMatches')} 场含 W/L 路径占位。")
+    if page.get("totalStandings") is not None:
+        lines.append(f"- 排名记录：{page.get('totalStandings')} 条。")
+    if page.get("totalStats") is not None:
+        lines.append(f"- 统计记录：{page.get('totalStats')} 条。")
+    if page.get("editionCount") is not None:
+        lines.append(f"- 历史数据：{page.get('editionCount')} 届赛事，当前年份 {page.get('selectedYear')}。")
+    lines.extend(
+        [
+            "### 可继续推进",
+            "- 可以基于当前页面摘要讨论赛程、排名、淘汰赛路径、历史决赛或冠军预测。",
+            "- 如果问题需要最新伤停、首发、赔率或新闻，应启用联网检索后再下判断。",
+        ]
+    )
+    if sources:
+        lines.append(f"- 已采用 {len(sources)} 条联网来源。")
+    elif reason:
+        lines.append(f"- 联网或模型生成未完成：{reason}")
+    return "\n".join(lines)
+
+
+def _tournament_prediction_answer(
+    context: dict[str, Any],
+    request: AgentResearchRequest | None,
+    sources: list[dict[str, Any]],
+) -> str:
+    page = context.get("page") or {}
+    placeholder_count = page.get("placeholderMatches")
+    model_context = context.get("tournament_prediction") or {}
+    model_rows = model_context.get("rows") or []
+    if not model_rows:
+        return "\n".join(
+            [
+                "### 当前没有有效冠军预测",
+                "- 当前页面没有绑定一份通过正式验证的冠军预测报告。",
+                "- 我不会使用旧阶段结果、均匀概率、默认球队强度或通用强队印象代替当前模型结论。",
+                "- 请先补齐页面所示的数据缺口并重新生成；通过验证后，我才能解释对应概率和比赛路径。",
+            ]
+        )
+    if model_rows:
+        leader = str(model_rows[0].get("team_name") or model_rows[0].get("team_id"))
+        contender_lines = [
+            (
+                f"- {row.get('team_name') or row.get('team_id')}："
+                f"夺冠概率 {float(row.get('champion_probability') or 0):.1%}。"
+            )
+            for row in model_rows[:5]
+        ]
+    citation_ids = [int(source.get("citationId")) for source in sources if source.get("citationId")]
+    citation_a = f"[{citation_ids[0]}]" if citation_ids else ""
+    citation_b = f"[{citation_ids[1]}]" if len(citation_ids) > 1 else citation_a
+    citation_c = f"[{citation_ids[2]}]" if len(citation_ids) > 2 else citation_b
+    source_note = (
+        f"本次采用 {len(sources)} 条联网来源，主要作为外部赔率/预测市场和媒体观点参照。{citation_a}{citation_c}"
+        if sources
+        else "当前没有可采用联网来源，因此这是基于本地赛程页、淘汰赛路径和通用强队先验的低置信度预测。"
+    )
+    if model_rows:
+        simulation_count = int(model_context.get("simulation_count") or 0)
+        verification_note = (
+            "数据已通过严格校验"
+            if model_context.get("data_verified")
+            else f"数据状态为 {model_context.get('data_status') or 'degraded'}"
+        )
+        source_note = (
+            f"冠军概率来自 {simulation_count} 次逐场 Monte Carlo 路径模拟；{verification_note}。"
+            f"联网来源另有 {len(sources)} 条，用于补充临场信息。{citation_a}{citation_c}"
+        )
+    if placeholder_count:
+        path_note = f"赛程表里还有 {placeholder_count} 场占位路径，后续落位会显著改变概率。"
+    else:
+        path_note = "后续赛程落位、伤停、首发和赔率变化会显著改变概率。"
+    return "\n".join(
+        [
+            "### 预测结论",
+            f"- 如果现在必须选一个，我更看好**{leader}夺冠**。{citation_a}",
+            f"- 但这不是“断言冠军已定”：{leader}只是当前第一倾向，不是压倒性热门。",
+            "### 我的冠军概率分配",
+            *contender_lines,
+            "### 为什么这么排",
+            f"- 外部赔率/预测市场类来源可作为市场共识参照，但当前项目赛程表的剩余球队优先级更高。{citation_b}",
+            f"- 我把{leader}放第一，是因为逐场概率驱动的路径模拟给出了当前最高夺冠频次，而不是直接用排名换算冠军。",
+            "- 其余球队仍有足够争冠空间，差距主要来自半决赛对位、体能消耗、伤停和点球风险。",
+            "### 什么情况会推翻这个判断",
+            f"- 如果{leader}在半决赛消耗过大、关键位置缺阵，第一概率要明显下修。",
+            "- 如果赔率和主流预测在半决赛前后明显转向另一支仍存活球队，应优先跟随新的路径信息重算。",
+            "### 事实边界和置信度",
+            f"- {source_note}",
+            f"- {path_note}",
+            f"- 当前置信度受数据状态、未落位路径和临场信息完整度约束；它足够给出“更看好谁”，但不适合当成确定结论。{citation_c}",
+        ]
+    )
+
+
+def _contender_probability_rows(contenders: list[str]) -> list[tuple[str, str]]:
+    bands = ["30%-36%", "24%-30%", "20%-25%", "14%-20%"]
+    if len(contenders) == 2:
+        bands = ["52%-58%", "42%-48%"]
+    elif len(contenders) == 3:
+        bands = ["38%-44%", "30%-36%", "22%-30%"]
+    return [(team, bands[index] if index < len(bands) else "5%-12%") for index, team in enumerate(contenders)]
+
+
 def _bracket_placeholder_answer(context: dict[str, Any], request: AgentResearchRequest, sources: list[dict[str, Any]]) -> str:
     match = context.get("match") or {}
     home = match.get("home_team_raw") or "W101"
@@ -492,6 +726,36 @@ def _bracket_placeholder_answer(context: dict[str, Any], request: AgentResearchR
             "- 因此不能把占位符写成任何已确定球队或具体球员阵容。",
         ]
     )
+
+
+def _bracket_scenario_answer(context: dict[str, Any], sources: list[dict[str, Any]], reason: str = "") -> str:
+    match = context.get("match") or {}
+    bracket = context.get("bracket") or {}
+    home = match.get("home_team_raw") or match.get("home_team_id") or "TBD"
+    away = match.get("away_team_raw") or match.get("away_team_id") or "TBD"
+    lines = [
+        "### 路径情景推演",
+        f"- 当前对阵：{home} vs {away}。",
+        "- W/L 编号是淘汰赛路径占位，不是已确定球队；不能把它们写成具体球队或具体球员阵容。",
+    ]
+    for item in bracket.get("placeholders") or []:
+        source = item.get("source_match") or {}
+        source_label = _match_label(source) or f"match {item.get('match_number')}"
+        side = "主队侧" if item.get("side") == "home" else "客队侧"
+        kind = "胜者" if item.get("kind") == "winner" else "负者"
+        lines.append(f"- {side} {item.get('code')}：来自 {source_label} 的{kind}。")
+    lines.extend(
+        [
+            "### 预测边界",
+            "- 前序比赛未落位前，合理输出应是路径级预测：比较潜在晋级球队的体能、赛程、风格克制、伤停和赔率变化。",
+            "- 如果启用联网检索，可进一步把最新新闻、赔率和赛前发布会纳入胜负倾向；没有这些证据时只能给低置信度情景判断。",
+        ]
+    )
+    if sources:
+        lines.append(f"- 本次已采用 {len(sources)} 条联网来源。")
+    elif reason:
+        lines.append(f"- 联网或模型生成未完成：{reason}")
+    return "\n".join(lines)
 
 
 def _supported_claims(source: QualifiedSource, plan: ResearchPlan) -> list[dict[str, str]]:
@@ -515,7 +779,7 @@ def _quality_source_required(request: AgentResearchRequest, plan: ResearchPlan) 
 
 
 def _quality_match_required(request: AgentResearchRequest, plan: ResearchPlan) -> bool:
-    return not _quality_concise_allowed(request, plan)
+    return bool(plan.match_context) and not _quality_concise_allowed(request, plan)
 
 
 def _quality_structure_required(request: AgentResearchRequest, plan: ResearchPlan) -> bool:
@@ -568,7 +832,7 @@ def _reasoning_compose_summary(plan: ResearchPlan, sources: list[dict[str, Any]]
     if plan.output_contract.get("facts_only"):
         return f"按用户要求只输出确定事实，{evidence_note}。"
     if plan.bracket_context.get("has_placeholders"):
-        return "优先解释 W/L 淘汰赛占位符，避免把占位符写成已确定球队。"
+        return "先解释 W/L 淘汰赛占位符，再按可能路径做情景推演，避免把占位符写成已确定球队。"
     return f"按结论、依据、风险不确定性组织回答，{evidence_note}。"
 
 
@@ -584,18 +848,29 @@ def _effective_search_mode(request: AgentResearchRequest) -> str:
 
 def _build_context(request: AgentResearchRequest) -> dict[str, Any]:
     data = request.context.data or {}
-    if data.get("scope") == "tournament":
-        return {"environment": {}, "bracket": {}, "team_history": {}, "scope": "tournament"}
+    if data.get("scope") in {"page", "tournament"}:
+        return {"environment": {}, "bracket": {}, "team_history": {}, "scope": data.get("scope"), "page": data}
     if request.context.current_match_id:
-        return build_match_context(request.context.current_match_id)
+        context = build_match_context(request.context.current_match_id)
+        context["page"] = data
+        bound_prediction = load_bound_match_prediction(
+            str(data.get("artifactId") or "") or None,
+            request.context.current_match_id,
+            expected_anchor=str(data.get("anchorStage") or "") or None,
+        )
+        if bound_prediction:
+            context["prediction"] = bound_prediction
+        return context
+    home = data.get("home_team_raw") or data.get("homeTeam")
+    away = data.get("away_team_raw") or data.get("awayTeam")
+    if not home and not away:
+        return {"environment": {}, "bracket": {}, "team_history": {}, "scope": "page", "page": data}
     match = {
-        "home_team_raw": data.get("home_team_raw") or data.get("homeTeam") or "Brazil",
-        "away_team_raw": data.get("away_team_raw") or data.get("awayTeam") or "Norway",
+        "home_team_raw": home,
+        "away_team_raw": away,
         "stage": data.get("stage") or data.get("stageName") or "World Cup",
     }
     context = {"match": match, "environment": {}, "bracket": {}, "team_history": {}, "scope": data.get("scope")}
-    if data.get("scope") == "tournament":
-        context.pop("match", None)
     return context
 
 
@@ -605,7 +880,28 @@ def _public_context(context: dict[str, Any]) -> dict[str, Any]:
         "environment": context.get("environment") or {},
         "bracket": context.get("bracket") or {},
         "team_history": context.get("team_history") or {},
+        "page": context.get("page") or {},
+        "prediction": context.get("prediction") or {},
+        "tournament_prediction": context.get("tournament_prediction") or {},
     }
+
+
+def _prediction_from_context(context: dict[str, Any]):
+    from wcpa.schemas.prediction import MatchPrediction
+
+    payload = context.get("prediction")
+    if not isinstance(payload, dict) or not payload:
+        return None
+    return MatchPrediction(**payload)
+
+
+def _team_label(context: dict[str, Any], side: str) -> str:
+    match = context.get("match") or {}
+    return str(
+        match.get(f"{side}_team_raw")
+        or match.get(f"{side}_team_id")
+        or ("主队" if side == "home" else "客队")
+    )
 
 
 def _match_label(match: dict[str, Any]) -> str:
@@ -616,7 +912,12 @@ def _match_label(match: dict[str, Any]) -> str:
 
 def _is_tournament_question(message: str) -> bool:
     text = message.casefold()
-    return any(term in text for term in ("champion", "winner", "outright", "冠军", "夺冠", "啝鍐", "澶哄啝"))
+    return any(term in text for term in ("champion", "winner", "outright", "冠军", "夺冠"))
+
+
+def _is_prediction_question(message: str) -> bool:
+    text = message.casefold()
+    return any(term in text for term in ("预测", "预估", "看好", "冠军", "夺冠", "胜负", "比分", "概率", "倾向", "predict", "prediction", "champion", "winner", "odds", "favorite"))
 
 
 def _is_head_to_head_history_question(message: str) -> bool:
@@ -635,16 +936,12 @@ def _team_search_name(name: str) -> str:
     normalized = name.strip().casefold()
     aliases = {
         "瑞士": "Switzerland",
-        "鐟炲＋": "Switzerland",
         "sui": "Switzerland",
         "哥伦比亚": "Colombia",
-        "鍝ヤ鸡姣斾簹": "Colombia",
         "col": "Colombia",
         "巴西": "Brazil",
-        "宸磋タ": "Brazil",
         "bra": "Brazil",
         "挪威": "Norway",
-        "鎸▉": "Norway",
         "nor": "Norway",
         "法国": "France",
         "摩洛哥": "Morocco",
@@ -656,12 +953,12 @@ def _team_search_name(name: str) -> str:
 
 def _is_pitch_question(message: str) -> bool:
     text = message.casefold()
-    return any(term in text for term in ("lumen field", "seattle stadium", "pitch", "turf", "grass", "草皮", "浜哄伐"))
+    return any(term in text for term in ("lumen field", "seattle stadium", "pitch", "turf", "grass", "草皮", "人工草皮"))
 
 
 def _wants_facts_only(message: str) -> bool:
     text = message.casefold()
-    return any(term in text for term in ("facts_only", "只说", "确定事实", "彧璇", "纭畾"))
+    return any(term in text for term in ("facts_only", "只说", "确定事实"))
 
 
 def _has_pitch_support(context: dict[str, Any], sources: list[dict[str, Any]]) -> bool:
@@ -671,7 +968,47 @@ def _has_pitch_support(context: dict[str, Any], sources: list[dict[str, Any]]) -
 
 def _has_placeholder_match(context: dict[str, Any]) -> bool:
     match = context.get("match") or {}
-    return any(str(match.get(key) or "").startswith(("W", "L")) for key in ("home_team_raw", "away_team_raw", "home_team_id", "away_team_id"))
+    values = [str(match.get(key) or "").strip() for key in ("home_team_raw", "away_team_raw", "home_team_id", "away_team_id")]
+    return any(
+        value.upper() in {"TBD", "TBC", "UNKNOWN", "N/A", "NA"}
+        or value in {"待定", "待确认", "未确定"}
+        or bool(re.fullmatch(r"[WL]\d+", value, re.IGNORECASE))
+        for value in values
+    )
+
+
+def _is_placeholder_identity_question(message: str) -> bool:
+    text = message.casefold()
+    has_placeholder_ref = bool(re.search(r"\b[wl]\d{2,3}\b", text)) or "占位" in text or "placeholder" in text
+    if not has_placeholder_ref:
+        return False
+    prediction_terms = ("预测", "推演", "情景", "胜负", "比分", "倾向", "分析", "preview", "predict", "scenario")
+    if any(term in text for term in prediction_terms):
+        return False
+    identity_terms = ("是谁", "是什么", "什么意思", "哪", "代表", "不要编", "meaning", "who is", "what is")
+    return any(term in text for term in identity_terms)
+
+
+def _prediction_answer_needs_repair(answer: str) -> bool:
+    text = answer.strip()
+    lowered = text.casefold()
+    refusal_terms = (
+        "无法预测",
+        "不能预测",
+        "无法直接预测",
+        "没有足够数据",
+        "无法给出明确",
+        "无法判断",
+        "需要等到",
+        "cannot predict",
+        "not enough data",
+        "insufficient data",
+    )
+    if any(term in lowered for term in refusal_terms):
+        return True
+    has_pick = any(term in text for term in ("看好", "第一倾向", "首选", "更可能", "夺冠", "冠军")) or any(term in lowered for term in ("favorite", "pick", "winner"))
+    has_reasoning = any(term in text for term in ("因为", "理由", "概率", "置信", "风险", "条件", "梯队"))
+    return len(text) < 260 or not (has_pick and has_reasoning)
 
 
 def _remove_unrequested_player_noise(answer: str, message: str) -> str:

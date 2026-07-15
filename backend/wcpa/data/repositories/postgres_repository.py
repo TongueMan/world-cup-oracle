@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import socket
+import time
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 from wcpa.data.migrations import apply_migrations
-from wcpa.shared.env import database_url
+from wcpa.shared.env import database_url, env_int
 
 
 def _json_dumps(payload: Any) -> str:
@@ -275,18 +278,85 @@ class PostgresRepository:
     before optional database dependencies are installed.
     """
 
+    _global_unavailable_until = 0.0
+    _global_last_error = ""
+
     def __init__(self, dsn: str | None = None):
         self.dsn = dsn or database_url()
         self._schema_ready = False
+        self.connect_timeout_seconds = max(1, env_int("WCPA_DATABASE_CONNECT_TIMEOUT_SECONDS", 1))
+        self.preflight_timeout_ms = max(50, env_int("WCPA_DATABASE_PREFLIGHT_TIMEOUT_MS", 250))
+        self.statement_timeout_ms = max(500, env_int("WCPA_DATABASE_STATEMENT_TIMEOUT_MS", 3000))
+        self.unavailable_ttl_seconds = max(1, env_int("WCPA_DATABASE_UNAVAILABLE_TTL_SECONDS", 30))
 
     @property
     def enabled(self) -> bool:
         return bool(self.dsn)
 
     def _connect(self):
+        if self.__class__._global_unavailable_until > time.monotonic():
+            raise RuntimeError(self.__class__._global_last_error or "PostgreSQL repository is temporarily unavailable.")
+        self._preflight_tcp()
         import psycopg
 
-        return psycopg.connect(self.dsn)
+        try:
+            return psycopg.connect(
+                self.dsn,
+                connect_timeout=self.connect_timeout_seconds,
+                options=f"-c statement_timeout={self.statement_timeout_ms}",
+            )
+        except Exception as exc:
+            self._mark_unavailable(exc)
+            raise
+
+    def _preflight_tcp(self) -> None:
+        parsed = urlparse(self.dsn)
+        host = parsed.hostname
+        port = parsed.port or 5432
+        if not host:
+            return
+        timeout = self.preflight_timeout_ms / 1000
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                return
+        except OSError as exc:
+            self._mark_unavailable(exc)
+            raise ConnectionError(f"PostgreSQL TCP preflight failed for {host}:{port}") from exc
+
+    def _mark_unavailable(self, exc: Exception) -> None:
+        self.__class__._global_last_error = f"{type(exc).__name__}: {exc}"
+        self.__class__._global_unavailable_until = time.monotonic() + self.unavailable_ttl_seconds
+
+    def health(self) -> dict[str, Any]:
+        if not self.enabled:
+            return {
+                "enabled": False,
+                "status": "disabled",
+                "message": "Database is disabled or no DSN is configured.",
+            }
+        try:
+            conn = self._connect()
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+                    cur.fetchone()
+            return {
+                "enabled": True,
+                "status": "ok",
+                "connect_timeout_seconds": self.connect_timeout_seconds,
+                "preflight_timeout_ms": self.preflight_timeout_ms,
+                "statement_timeout_ms": self.statement_timeout_ms,
+            }
+        except Exception as exc:
+            return {
+                "enabled": True,
+                "status": "unavailable",
+                "message": f"{type(exc).__name__}: {exc}",
+                "connect_timeout_seconds": self.connect_timeout_seconds,
+                "preflight_timeout_ms": self.preflight_timeout_ms,
+                "statement_timeout_ms": self.statement_timeout_ms,
+                "retry_after_seconds": max(0, round(self.__class__._global_unavailable_until - time.monotonic(), 1)),
+            }
 
     def init_schema(self) -> None:
         if not self.enabled:
@@ -543,8 +613,15 @@ class PostgresRepository:
                 cur.execute(
                     """
                     INSERT INTO prediction_versions
-                      (artifact_version, edition, mode, seed, generated_at, payload)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                      (artifact_version, edition, mode, seed, generated_at, payload,
+                       artifact_id, run_id, publication_status, anchor_stage,
+                       schedule_hash, quality_status, published_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (artifact_id) WHERE artifact_id <> '' DO UPDATE SET
+                      publication_status = EXCLUDED.publication_status,
+                      quality_status = EXCLUDED.quality_status,
+                      published_at = EXCLUDED.published_at,
+                      payload = EXCLUDED.payload
                     """,
                     (
                         payload.get("artifact_version", ""),
@@ -553,6 +630,13 @@ class PostgresRepository:
                         int(payload.get("seed", 0)),
                         generated_at,
                         json.dumps(payload, ensure_ascii=False),
+                        payload.get("artifact_id", ""),
+                        payload.get("run_id", ""),
+                        payload.get("publication_status", "legacy"),
+                        (payload.get("current_tournament_state") or {}).get("active_round", ""),
+                        payload.get("schedule_hash", ""),
+                        (payload.get("data_quality_report") or {}).get("status", "unknown"),
+                        generated_at if payload.get("publication_status") == "published" else None,
                     ),
                 )
             conn.commit()

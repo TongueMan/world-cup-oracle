@@ -52,7 +52,7 @@ class WorldCupDataService:
         repository: PostgresRepository | None = None,
         collector: BingSportsWorldCupCollector | None = None,
     ):
-        self.repository = repository or PostgresRepository()
+        self.repository = repository
         self.collector = collector or BingSportsWorldCupCollector()
 
     def sync_worldcup_data(self) -> WorldCupSyncResult:
@@ -66,19 +66,7 @@ class WorldCupDataService:
             _write_json(TEAMS_FILE, normalized["teams"])
             _write_json(STANDINGS_FILE, normalized["standings"])
 
-            for snapshot in run.snapshots:
-                self.repository.save_source_snapshot(
-                    snapshot.source_key,
-                    snapshot.url,
-                    snapshot.status.status,
-                    snapshot.status.credibility,
-                    snapshot.raw,
-                    snapshot.status.message,
-                )
-            self.repository.save_knowledge_records(run.records, run.manifest)
-            self.repository.upsert_worldcup_teams(normalized["teams"])
-            counts = self.repository.upsert_worldcup_matches(normalized["matches"])
-            self.repository.upsert_worldcup_standings(normalized["standings"])
+            counts = self._mirror_sync_to_repository(run, normalized)
 
             status = "success" if len(normalized["matches"]) >= 104 else "partial"
             result = WorldCupSyncResult(
@@ -118,60 +106,54 @@ class WorldCupDataService:
         status: str | None = None,
         stage: str | None = None,
     ) -> list[dict[str, Any]]:
-        rows = self.repository.load_worldcup_matches(date_from, date_to, status, stage)
-        if not rows:
-            rows = _read_json_list(MATCHES_FILE)
+        rows = _read_json_list(MATCHES_FILE)
+        if not rows and self.repository is not None:
+            rows = self.repository.load_worldcup_matches(date_from, date_to, status, stage)
         return _filter_matches(rows, date_from, date_to, status, stage)
 
     def get_match_detail(self, match_id: str) -> dict[str, Any] | None:
-        row = self.repository.load_worldcup_match(match_id)
-        if row:
-            return _with_date_metadata(row)
         match = next((match for match in _read_json_list(MATCHES_FILE) if match.get("match_id") == match_id), None)
-        return _with_date_metadata(match) if match else None
+        if match:
+            return _with_date_metadata(match)
+        if self.repository is not None:
+            row = self.repository.load_worldcup_match(match_id)
+            if row:
+                return _with_date_metadata(row)
+        return None
 
     def get_bracket(self) -> list[dict[str, Any]]:
-        rows = self.repository.load_worldcup_bracket()
-        if not rows:
-            rows = [
-                match
-                for match in _read_json_list(MATCHES_FILE)
-                if match.get("stage") != "group" or match.get("next_match_id")
-            ]
+        rows = [
+            match
+            for match in _read_json_list(MATCHES_FILE)
+            if match.get("stage") != "group" or match.get("next_match_id")
+        ]
+        if not rows and self.repository is not None:
+            rows = self.repository.load_worldcup_bracket()
         return rows
 
     def get_standings(self) -> list[dict[str, Any]]:
-        rows = self.repository.load_worldcup_standings()
-        return rows or _read_json_list(STANDINGS_FILE)
+        rows = _read_json_list(STANDINGS_FILE)
+        if not rows and self.repository is not None:
+            rows = self.repository.load_worldcup_standings()
+        return rows
 
     def get_player_stats(self) -> list[dict[str, Any]]:
-        rows = self.repository.load_bing_knowledge_records("player_stats")
-        if rows:
-            return _filter_player_stats(rows)
-        return _filter_player_stats(_read_jsonl(DATA_DIR / "knowledge" / "bing" / "player_stats.jsonl"))
+        rows = _read_jsonl(DATA_DIR / "knowledge" / "bing" / "player_stats.jsonl")
+        if not rows and self.repository is not None:
+            rows = self.repository.load_bing_knowledge_records("player_stats")
+        return _filter_player_stats(rows)
 
     def get_sync_status(self) -> dict[str, Any]:
-        status = self.repository.load_worldcup_sync_status()
-        if status:
-            return WorldCupSyncStatus(**status).model_dump(mode="json")
         if SYNC_STATUS_FILE.exists():
             return json.loads(SYNC_STATUS_FILE.read_text(encoding="utf-8"))
+        if self.repository is not None:
+            status = self.repository.load_worldcup_sync_status()
+            if status:
+                return WorldCupSyncStatus(**status).model_dump(mode="json")
         return WorldCupSyncStatus().model_dump(mode="json")
 
     def _save_sync_run(self, started_at: datetime, result: WorldCupSyncResult) -> None:
         finished_at = datetime.now(timezone.utc)
-        self.repository.save_worldcup_sync_run(
-            source=SOURCE,
-            started_at=started_at,
-            finished_at=finished_at,
-            status=result.status,
-            fetched_count=result.fetched_count,
-            parsed_count=result.parsed_count,
-            inserted_count=result.inserted_count,
-            updated_count=result.updated_count,
-            error_message=result.error_message,
-            raw_snapshot_dir=result.raw_snapshot_dir,
-        )
         payload = WorldCupSyncStatus(
             last_success_at=finished_at if result.status in {"success", "partial"} else None,
             last_failed_at=finished_at if result.status == "failed" else None,
@@ -186,6 +168,43 @@ class WorldCupDataService:
         ).model_dump(mode="json")
         WORLD_CUP_DIR.mkdir(parents=True, exist_ok=True)
         _write_json(SYNC_STATUS_FILE, payload)
+        if self.repository is not None:
+            try:
+                self.repository.save_worldcup_sync_run(
+                    source=SOURCE,
+                    started_at=started_at,
+                    finished_at=finished_at,
+                    status=result.status,
+                    fetched_count=result.fetched_count,
+                    parsed_count=result.parsed_count,
+                    inserted_count=result.inserted_count,
+                    updated_count=result.updated_count,
+                    error_message=result.error_message,
+                    raw_snapshot_dir=result.raw_snapshot_dir,
+                )
+            except Exception:
+                return
+
+    def _mirror_sync_to_repository(self, run: BingKnowledgeRun, normalized: dict[str, list[dict[str, Any]]]) -> dict[str, int]:
+        try:
+            repository = self.repository or PostgresRepository()
+            for snapshot in run.snapshots:
+                repository.save_source_snapshot(
+                    snapshot.source_key,
+                    snapshot.url,
+                    snapshot.status.status,
+                    snapshot.status.credibility,
+                    snapshot.raw,
+                    snapshot.status.message,
+                )
+            repository.save_knowledge_records(run.records, run.manifest)
+            repository.upsert_worldcup_teams(normalized["teams"])
+            counts = repository.upsert_worldcup_matches(normalized["matches"])
+            repository.upsert_worldcup_standings(normalized["standings"])
+            self.repository = repository
+            return counts
+        except Exception:
+            return {"inserted": 0, "updated": 0}
 
 
 def normalize_bing_run(run: BingKnowledgeRun) -> dict[str, list[dict[str, Any]]]:
@@ -496,7 +515,15 @@ def _normalize_team_id(name: str | None, fallback: str | None) -> str | None:
 
 
 def _is_placeholder_id(value: str | None) -> bool:
-    return bool(value and re.fullmatch(r"[WL]\d+", value.strip()))
+    text = str(value or "").strip()
+    return bool(
+        text
+        and (
+            re.fullmatch(r"[WL]\d+", text, re.IGNORECASE)
+            or text.upper() in {"TBD", "TBC", "UNKNOWN", "N/A", "NA"}
+            or text in {"待定", "待确认", "未确定"}
+        )
+    )
 
 
 _TEAM_EN = {

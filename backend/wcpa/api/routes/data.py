@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter
 
+from wcpa.data.repositories.postgres_repository import PostgresRepository
 from wcpa.data.sources.bing_worldcup import (
     BingSportsWorldCupCollector,
     load_bing_manifest,
@@ -11,6 +12,11 @@ from wcpa.data.sources.bing_worldcup import (
 from wcpa.schemas.artifact import DataQualityReport, DataSourceStatus
 
 router = APIRouter()
+
+
+@router.get("/database/status")
+def get_database_status():
+    return PostgresRepository().health()
 
 
 @router.get("/status")

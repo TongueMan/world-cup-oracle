@@ -1,5 +1,6 @@
 ﻿import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../lib/api';
+import type { KeyboardEvent } from 'react';
 import type {
   AgentCapabilities,
   AgentChatMessage,
@@ -11,6 +12,7 @@ import type {
 
 interface AgentDrawerProps {
   open: boolean;
+  sessionKey: string;
   context: AgentPageContext;
   initialPrompt?: string;
   onClose: () => void;
@@ -24,6 +26,14 @@ interface ReasoningStep {
   title: string;
   summary: string;
   details?: Record<string, unknown>;
+}
+
+interface AgentSessionState {
+  messages: AgentChatMessage[];
+  input: string;
+  sources: AgentSearchResult[];
+  reasoningSteps: ReasoningStep[];
+  status: string;
 }
 
 const STORAGE_KEY = 'wcpa.agent.sessionConfig';
@@ -91,19 +101,20 @@ function HeaderIcon({ name }: { name: HeaderIconName }) {
   );
 }
 
-export function AgentDrawer({ open, context, initialPrompt = '', onClose }: AgentDrawerProps) {
+export function AgentDrawer({ open, sessionKey, context, initialPrompt = '', onClose }: AgentDrawerProps) {
   const [capabilities, setCapabilities] = useState<AgentCapabilities>(FALLBACK_CAPABILITIES);
   const [config, setConfig] = useState<AgentLLMConfig>(() => loadConfig());
   const [viewMode, setViewMode] = useState<ViewMode>(config.apiKey ? 'chat' : 'settings');
-  const [messages, setMessages] = useState<AgentChatMessage[]>([]);
-  const [input, setInput] = useState(initialPrompt);
-  const [sources, setSources] = useState<AgentSearchResult[]>([]);
-  const [reasoningSteps, setReasoningSteps] = useState<ReasoningStep[]>([]);
-  const [status, setStatus] = useState('');
-  const [streaming, setStreaming] = useState(false);
+  const [sessions, setSessions] = useState<Record<string, AgentSessionState>>({});
+  const [streamingSessionKey, setStreamingSessionKey] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const previousSessionKeyRef = useRef(sessionKey);
+
+  const session = sessions[sessionKey] ?? emptySession(initialPrompt);
+  const { messages, input, sources, reasoningSteps, status } = session;
+  const streaming = streamingSessionKey === sessionKey;
 
   useEffect(() => {
     if (!open) return;
@@ -112,12 +123,39 @@ export function AgentDrawer({ open, context, initialPrompt = '', onClose }: Agen
         setCapabilities(data);
         setConfig((current) => normalizeConfig(current, data));
       })
-      .catch((err) => setStatus(err instanceof Error ? err.message : String(err)));
-  }, [open]);
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        setSessions((current) => {
+          const existing = current[sessionKey] ?? emptySession(initialPrompt);
+          return { ...current, [sessionKey]: { ...existing, status: message } };
+        });
+      });
+  }, [initialPrompt, open, sessionKey]);
 
   useEffect(() => {
-    setInput(initialPrompt);
-  }, [initialPrompt]);
+    setSessions((current) => {
+      const existing = current[sessionKey];
+      if (existing) {
+        if (!initialPrompt || existing.input || existing.messages.length > 0) return current;
+        return { ...current, [sessionKey]: { ...existing, input: initialPrompt } };
+      }
+      return { ...current, [sessionKey]: emptySession(initialPrompt) };
+    });
+  }, [initialPrompt, sessionKey]);
+
+  useEffect(() => {
+    const previousSessionKey = previousSessionKeyRef.current;
+    if (previousSessionKey !== sessionKey && streamingSessionKey === previousSessionKey) {
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setStreamingSessionKey(null);
+      setSessions((current) => {
+        const existing = current[previousSessionKey] ?? emptySession();
+        return { ...current, [previousSessionKey]: { ...existing, status: '已停止' } };
+      });
+    }
+    previousSessionKeyRef.current = sessionKey;
+  }, [sessionKey, streamingSessionKey]);
 
   useEffect(() => {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(config));
@@ -133,7 +171,7 @@ export function AgentDrawer({ open, context, initialPrompt = '', onClose }: Agen
   );
   const models = provider?.models ?? [];
   const canChat = Boolean(config.provider && config.model && config.apiKey);
-  const searchAllowed = capabilities.search.enabled && config.searchEnabled;
+  const searchAllowed = capabilities.search.enabled;
 
   if (!open) return null;
 
@@ -152,12 +190,12 @@ export function AgentDrawer({ open, context, initialPrompt = '', onClose }: Agen
 
   async function handleTest() {
     setTesting(true);
-    setStatus('');
+    updateSession(sessionKey, { status: '' });
     try {
       const result = await api.testAgentProvider(config);
-      setStatus(result.message);
+      updateSession(sessionKey, { status: result.message });
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : String(err));
+      updateSession(sessionKey, { status: err instanceof Error ? err.message : String(err) });
     } finally {
       setTesting(false);
     }
@@ -170,20 +208,33 @@ export function AgentDrawer({ open, context, initialPrompt = '', onClose }: Agen
 
   async function sendMessage(raw: string) {
     const message = raw.trim();
-    if (!message || streaming) return;
+    if (!message || streamingSessionKey) return;
     if (!canChat) {
       setViewMode('settings');
       return;
     }
 
-    setInput('');
-    setStatus('');
-    setSources([]);
-    setReasoningSteps([]);
-    const shouldSearch = config.searchEnabled || wantsWebSearch(message) || wantsHistoricalHeadToHead(message);
+    const requestSessionKey = sessionKey;
+    const requestContext = context;
+    const matchAnalysis = Boolean(requestContext.currentMatchId);
+    const factsOnly = wantsFactsOnly(message);
+    const shouldSearch = !factsOnly && (
+      config.searchEnabled
+      || wantsWebSearch(message)
+      || wantsPrediction(message)
+      || wantsHistoricalHeadToHead(message)
+      || matchAnalysis
+    );
     const history = messages.slice(-10);
-    setMessages((current) => [...current, { role: 'user', content: message }, { role: 'assistant', content: '' }]);
-    setStreaming(true);
+    updateSession(requestSessionKey, (current) => ({
+      ...current,
+      input: '',
+      status: '',
+      sources: [],
+      reasoningSteps: [],
+      messages: [...current.messages, { role: 'user', content: message }, { role: 'assistant', content: '' }],
+    }));
+    setStreamingSessionKey(requestSessionKey);
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -193,56 +244,78 @@ export function AgentDrawer({ open, context, initialPrompt = '', onClose }: Agen
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message,
-          context,
+          context: requestContext,
           history,
           llmConfig: { ...config, searchEnabled: shouldSearch },
           searchMode: shouldSearch ? 'required' : 'local_only',
-          toolIntent: context.currentMatchId ? 'match_analysis' : 'general',
+          toolIntent: matchAnalysis ? 'match_analysis' : 'general',
         }),
         signal: controller.signal,
       });
       if (!response.ok || !response.body) throw new Error(await readError(response));
       await readSSE(response.body, {
-        onToken: (token) => setMessages((current) => appendToLastAssistant(current, token)),
-        onSources: (rows) => setSources(rows),
-        onReasoning: (step) => setReasoningSteps((current) => [...current, step]),
-        onProgress: setStatus,
-        onError: setStatus,
+        onToken: (token) => updateSession(requestSessionKey, (current) => ({ ...current, messages: appendToLastAssistant(current.messages, token) })),
+        onSources: (rows) => updateSession(requestSessionKey, { sources: rows }),
+        onReasoning: (step) => updateSession(requestSessionKey, (current) => ({ ...current, reasoningSteps: [...current.reasoningSteps, step] })),
+        onProgress: (message) => updateSession(requestSessionKey, { status: message }),
+        onError: (message) => updateSession(requestSessionKey, { status: message }),
         onDone: (payload) => {
           if (typeof payload.answer === 'string') {
-            setMessages((current) => replaceLastAssistant(current, payload.answer as string));
+            updateSession(requestSessionKey, (current) => ({ ...current, messages: replaceLastAssistant(current.messages, payload.answer as string) }));
           }
           const diagnostics = payload.diagnostics as { searchedCount?: number; adoptedCount?: number; filteredCount?: number } | undefined;
           if (diagnostics?.searchedCount != null) {
-            setStatus(`完成：检索 ${diagnostics.searchedCount} 条，采用 ${diagnostics.adoptedCount ?? 0} 条，过滤 ${diagnostics.filteredCount ?? 0} 条。`);
+            updateSession(requestSessionKey, { status: `完成：检索 ${diagnostics.searchedCount} 条，采用 ${diagnostics.adoptedCount ?? 0} 条，过滤 ${diagnostics.filteredCount ?? 0} 条。` });
           } else {
-            setStatus('完成');
+            updateSession(requestSessionKey, { status: '完成' });
           }
         },
       });
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
         const text = err instanceof Error ? err.message : String(err);
-        setStatus(text);
-        setMessages((current) => replaceLastAssistant(current, text));
+        updateSession(requestSessionKey, (current) => ({
+          ...current,
+          status: text,
+          messages: replaceLastAssistant(current.messages, text),
+        }));
       }
     } finally {
-      setStreaming(false);
+      setStreamingSessionKey((current) => current === requestSessionKey ? null : current);
       abortRef.current = null;
     }
   }
 
   function stopStream() {
     abortRef.current?.abort();
-    setStreaming(false);
-    setStatus('已停止');
+    abortRef.current = null;
+    if (streamingSessionKey) updateSession(streamingSessionKey, { status: '已停止' });
+    setStreamingSessionKey(null);
   }
 
   function clearChat() {
-    setMessages([]);
-    setSources([]);
-    setReasoningSteps([]);
-    setStatus('');
+    updateSession(sessionKey, emptySession(initialPrompt));
+  }
+
+  function setInput(value: string) {
+    updateSession(sessionKey, { input: value });
+  }
+
+  function handleInputKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    void sendMessage(input);
+  }
+
+  function updateSession(
+    key: string,
+    patch: Partial<AgentSessionState> | ((current: AgentSessionState) => AgentSessionState),
+  ) {
+    setSessions((current) => {
+      const existing = current[key] ?? emptySession(key === sessionKey ? initialPrompt : '');
+      const next = typeof patch === 'function' ? patch(existing) : { ...existing, ...patch };
+      return { ...current, [key]: next };
+    });
   }
 
   return (
@@ -314,7 +387,13 @@ export function AgentDrawer({ open, context, initialPrompt = '', onClose }: Agen
             </div>
 
             <form className="agent-input" onSubmit={handleSubmit}>
-              <textarea value={input} onChange={(event) => setInput(event.target.value)} placeholder="输入你的问题..." rows={3} />
+              <textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={handleInputKeyDown}
+                placeholder="输入你的问题..."
+                rows={3}
+              />
               <div className="agent-input-actions">
                 {streaming ? (
                   <button type="button" onClick={stopStream}>停止</button>
@@ -323,7 +402,13 @@ export function AgentDrawer({ open, context, initialPrompt = '', onClose }: Agen
                 )}
               </div>
               <div className="agent-search-note">
-                {!capabilities.search.enabled ? capabilities.search.message : config.searchEnabled ? '本次对话允许联网搜索' : '当前仅使用本地数据'}
+                {!capabilities.search.enabled
+                  ? capabilities.search.message
+                  : config.searchEnabled
+                    ? '本次对话允许联网搜索'
+                    : context.currentMatchId
+                      ? '比赛分析默认联网优先'
+                      : '当前仅使用本地数据'}
               </div>
             </form>
           </div>
@@ -464,6 +549,16 @@ function replaceLastAssistant(messages: AgentChatMessage[], content: string) {
   return next;
 }
 
+function emptySession(input = ''): AgentSessionState {
+  return {
+    messages: [],
+    input,
+    sources: [],
+    reasoningSteps: [],
+    status: '',
+  };
+}
+
 function defaultConfig(): AgentLLMConfig {
   return { provider: 'deepseek', model: 'deepseek-chat', apiKey: '', baseURL: '', searchEnabled: false };
 }
@@ -493,9 +588,17 @@ function wantsWebSearch(message: string) {
   return /(联网|网上|搜索|查找|检索|web search|search online|google|firecrawl)/i.test(message);
 }
 
+function wantsPrediction(message: string) {
+  return /(预测|预估|看好|冠军|夺冠|胜负|比分|概率|可能|倾向|predict|prediction|champion|winner|odds|favorite)/i.test(message);
+}
+
 function wantsHistoricalHeadToHead(message: string) {
   return /(历史|历史上|此前|交手|交锋|对战|往绩|head to head|h2h|previous meetings|past meetings)/i.test(message)
     && /(结果|比分|战绩|记录|results|record)/i.test(message);
+}
+
+function wantsFactsOnly(message: string) {
+  return /(确定事实|只说事实|不要预测|不要分析|facts only|known facts)/i.test(message);
 }
 
 async function readError(response: Response) {

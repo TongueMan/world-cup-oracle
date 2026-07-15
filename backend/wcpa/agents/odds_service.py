@@ -46,7 +46,17 @@ class ApiFootballOddsService:
 
         fixture_id = _configured_fixture_id(match)
         if fixture_id is None and self.discover_fixture:
-            fixture_id = self._discover_fixture_id(match)
+            try:
+                fixture_id = self._discover_fixture_id(match)
+            except OddsServiceError as exc:
+                reason = str(exc)
+                status = (
+                    "plan_restricted"
+                    if "access to this season" in reason.casefold()
+                    or "free plans" in reason.casefold()
+                    else "api_error"
+                )
+                return _unavailable(status, reason)
         if fixture_id is None:
             return _unavailable(
                 "unmatched",

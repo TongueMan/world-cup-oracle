@@ -22,3 +22,12 @@ score_model:
   max_goals: 10
   lambda_clamp_min: 0.1
   lambda_clamp_max: 5.0
+
+prediction_fusion:
+  scenarios:
+    market_available: { market: 0.40, strength: 0.25, goals: 0.20, web_semantic: 0.15 }
+    structured_no_market: { strength: 0.40, goals: 0.25, web_semantic: 0.25, neutral_prior: 0.10 }
+    weak_structured_web_strong: { strength: 0.35, web_semantic: 0.45, neutral_prior: 0.20 }
+    extreme_missing: { strength: 0.35, neutral_prior: 0.65 }
+  neutral_prior: { home: 0.375, draw: 0.25, away: 0.375 }
+  max_total_adjustment: 0.12

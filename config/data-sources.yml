@@ -1,8 +1,11 @@
 sources:
-  - { key: "fifa_schedule", type: "web_scrape", url: "https://www.fifa.com/fifaplus/en/tournaments/mens/worldcup", credibility: "A", enabled: false }
-  - { key: "fifa_ranking", type: "csv_import", credibility: "A", enabled: false }
-  - { key: "elo_ratings", type: "web_scrape", url: "https://www.eloratings.net", credibility: "B", enabled: false }
-  - { key: "football_data", type: "api", credibility: "B", enabled: false }
-  - { key: "wikipedia", type: "web_scrape", credibility: "B", enabled: false }
+  - { key: "bing_worldcup_schedule", type: "live_schedule", credibility: "B", enabled: true }
+  - { key: "fifa_ranking", type: "firecrawl_scrape", url: "https://inside.fifa.com/fifa-world-ranking/men", credibility: "A", enabled: true, cache_ttl: "6h" }
+  - { key: "world_football_elo", type: "firecrawl_scrape", url: "https://www.eloratings.net/", credibility: "B", enabled: true, cache_ttl: "6h" }
+  - { key: "openfootball_worldcup_history", type: "local_normalized_dataset", credibility: "B", enabled: true }
+  - { key: "api_sports_odds", type: "api", url: "https://v3.football.api-sports.io", credibility: "B", enabled: true, credential_env: "WCPA_API_FOOTBALL_API_KEY" }
+  - { key: "firecrawl_match_evidence", type: "live_web_search", credibility: "B", enabled: true, credential_env: "FIRECRAWL_API_KEY", cache_ttl: "30m" }
+  - { key: "open_meteo_forecast", type: "api", url: "https://api.open-meteo.com/v1/forecast", credibility: "B", enabled: true, cache_ttl: "1h" }
+  - { key: "worldcup_venue_seed", type: "local_verified_dataset", credibility: "A", enabled: true }
 
-fallback_strategy: "use_fixtures"
+fallback_strategy: "fail_closed_for_predictions"
