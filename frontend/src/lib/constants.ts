@@ -60,13 +60,6 @@ export function getTeamName(teamId: string | null | undefined): string {
   return TEAM_NAMES[teamId] ?? teamId;
 }
 
-export const PREDICTION_MODES = [
-  { value: 'balanced', label: '综合' },
-  { value: 'rational', label: '理性' },
-  { value: 'narrative', label: '叙事' },
-  { value: 'symbolic', label: '象征' },
-] as const;
-
 const ROUND_LABELS: Record<string, string> = {
   R32: '三十二强',
   R16: '十六强',

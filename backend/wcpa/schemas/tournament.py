@@ -50,7 +50,6 @@ class KnockoutSlot(WCPABaseModel):
     went_to_extra_time: bool = False
     status: str = "predicted"  # scheduled/final/predicted/reconstructed
     upset_index: float = 0.0
-    symbolic_hint: str = ""
 
 
 class Bracket(WCPABaseModel):

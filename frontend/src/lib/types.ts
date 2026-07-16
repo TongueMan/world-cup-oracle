@@ -55,8 +55,6 @@ export interface MatchPrediction {
   extra_time_prob: number;
   penalty_prob: number;
   tactical_summary: string;
-  narrative_summary: string;
-  symbolic_summary: string;
   data_grade: 'A' | 'B' | 'C' | 'D' | 'E';
   confidence_cap: number;
   missing_fields: string[];
@@ -145,69 +143,11 @@ export interface KeyMatchupStat {
   elimination_probability: number;
 }
 
-export interface TarotSignal {
-  home_cards: string[];
-  away_cards: string[];
-  keywords: string[];
-}
-
-export interface IChingSignal {
-  gua: string;
-  keywords: string[];
-  upset_risk: number;
-}
-
-export interface AstrologySignal {
-  fire_energy: number;
-  earth_energy: number;
-  air_energy: number;
-  water_energy: number;
-  keywords: string[];
-}
-
-export interface SymbolicSignal {
-  match_id: string;
-  tarot: TarotSignal | null;
-  iching: IChingSignal | null;
-  astrology: AstrologySignal | null;
-  fortune_score: number;
-  symbolic_weight_applied: number;
-}
-
-export interface AgentOpinion {
-  agent: string;
-  support_team_id: string | null;
-  confidence: number;
-  summary: string;
-  detail: string;
-  reason_codes: string[];
-  cited_signals: string[];
-  risk_flags: string[];
-}
-
-export interface JudgeDecision {
-  winner_team_id: string | null;
-  decision_type: string;
-  final_confidence: number;
-  upset_index: number;
-  summary: string;
-  final_score: string;
-  disagreement_sources: string[];
-}
-
-export interface DebateTranscript {
-  match_id: string;
-  opinions: AgentOpinion[];
-  judge_decision: JudgeDecision | null;
-}
-
 export interface MatchDetail {
   artifact_id?: string;
   publication_status?: string;
   data_verified?: boolean;
   prediction: MatchPrediction;
-  symbolic_signal: SymbolicSignal | null;
-  debate_transcript: DebateTranscript | null;
 }
 
 export interface TournamentStateMatch {
@@ -381,15 +321,10 @@ export interface TournamentPrediction {
   runner_up_team_id: string | null;
   semifinalists: string[];
   rational_champion: string | null;
-  narrative_champion: string | null;
-  symbolic_champion: string | null;
   champion_probabilities: ChampionProbability[];
-  upset_alerts: Array<Record<string, unknown>>;
-  dark_horses: Array<Record<string, unknown>>;
   data_sources: DataSourceStatus[];
   champion_path: Array<Record<string, unknown>>;
   path_reconstruction_notes: string[];
-  debate_transcripts: DebateTranscript[];
   prediction_report: PredictionAgentReport | null;
   data_verified: boolean;
   data_quality_report: DataQualityReport | null;

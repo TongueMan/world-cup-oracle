@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import type { DataQualityReport, TournamentPrediction } from '../lib/types';
-import { PREDICTION_MODES } from '../lib/constants';
 
 interface ControlBarProps {
-  onRunPrediction: (seed: number, mode: string) => void;
+  onRunPrediction: (seed: number) => void;
   loading: boolean;
   prediction?: TournamentPrediction | null;
   dataStatus?: DataQualityReport | null;
@@ -39,7 +38,6 @@ export function ControlBar({
   dataStatus,
 }: ControlBarProps) {
   const [seed, setSeed] = useState(42);
-  const [mode, setMode] = useState('balanced');
   const statusLabel =
     dataStatus?.status === 'ready'
       ? '知识库就绪'
@@ -83,24 +81,9 @@ export function ControlBar({
               />
             </label>
 
-            <label className="flex items-center gap-2 rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm text-white/72">
-              <span className="text-xs uppercase tracking-[0.2em] text-[#ffe18a]">Mode</span>
-              <select
-                value={mode}
-                onChange={(event) => setMode(event.target.value)}
-                className="bg-transparent font-semibold text-white outline-none"
-              >
-                {PREDICTION_MODES.map((item) => (
-                  <option key={item.value} value={item.value} className="bg-[#0f2716] text-white">
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
             <button
               type="button"
-              onClick={() => onRunPrediction(seed, mode)}
+              onClick={() => onRunPrediction(seed)}
               disabled={loading}
               className="rounded-xl bg-[#f6c845] px-4 py-2 text-sm font-black text-[#13210b] shadow-[0_0_28px_rgba(246,200,69,0.24)] transition hover:bg-[#ffe18a] disabled:cursor-not-allowed disabled:opacity-50"
             >

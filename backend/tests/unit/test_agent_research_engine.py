@@ -7,13 +7,19 @@ import json
 from wcpa.agents.agent_context_builder import build_match_context
 from wcpa.agents.firecrawl_client import FirecrawlCallError
 from wcpa.agents.research_engine import (
+    EvidenceCollection,
+    _collect_web_evidence,
+    _deterministic_research_answer,
     _finalize_answer,
     _quality_min_total,
     _research_messages,
+    _looks_like_prediction_report,
     _supported_claims,
     build_research_plan,
     stream_research_answer,
 )
+from wcpa.agents.search_policy import SearchBudget
+from wcpa.agents.search_service import SearchServiceResult
 from wcpa.agents.source_quality import QualifiedSource
 from wcpa.agents.research_quality import evaluate_research_answer
 from wcpa.schemas.agent_chat import AgentResearchRequest
@@ -55,6 +61,145 @@ def test_research_plan_generates_product_queries():
     assert any("injuries" in query or "lineup" in query for query in plan.queries)
     assert any("tactical" in query for query in plan.queries)
     assert any("head to head" in query for query in plan.queries)
+
+
+def test_completed_match_uses_post_match_queries_and_score():
+    req = _request(
+        message="请详细复盘这场比赛。",
+        context={
+            "currentPage": "worldcup-dashboard",
+            "currentMatchId": "eng-arg",
+            "data": {"status": "complete"},
+        },
+        toolIntent="post_match_report",
+    )
+    context = {
+        "match": {
+            "home_team_raw": "英格兰",
+            "away_team_raw": "阿根廷",
+            "home_score": 1,
+            "away_score": 2,
+            "status": "complete",
+            "stage": "SF",
+        }
+    }
+
+    plan = build_research_plan(req, context, {"enabled": False})
+
+    assert plan.intent == "post_match_report"
+    assert "England 1-2 Argentina" in plan.queries[0]
+    assert "match report" in plan.queries[0]
+    assert not any("injuries" in query or "preview" in query for query in plan.queries)
+    assert plan.output_contract["forbid_speculative_recap"] is True
+
+
+def test_post_match_button_prompt_cannot_trigger_prediction_branch():
+    prompt = (
+        "请联网检索权威赛后战报，详细复盘这场比赛：按时间顺序说明进球和关键事件，"
+        "分析双方攻守变化、换人调整与胜负手，并给每组赛况事实标注来源。"
+        "不要根据比分或球队印象推测比赛过程。"
+    )
+    req = _request(
+        message=prompt,
+        context={"currentPage": "worldcup-dashboard", "currentMatchId": "eng-arg", "data": {"status": "complete"}},
+        toolIntent="post_match_report",
+    )
+    context = {
+        "match": {
+            "home_team_raw": "英格兰",
+            "away_team_raw": "阿根廷",
+            "home_score": 1,
+            "away_score": 2,
+            "status": "complete",
+            "stage": "SF",
+        }
+    }
+
+    plan = build_research_plan(req, context, {"enabled": False})
+
+    assert plan.intent == "post_match_report"
+    assert "prediction_required" not in plan.output_contract
+
+
+def test_web_evidence_keeps_successful_results_when_later_query_fails(monkeypatch):
+    req = _request(toolIntent="post_match_report")
+    context = {
+        "match": {
+            "home_team_raw": "英格兰",
+            "away_team_raw": "阿根廷",
+            "home_score": 1,
+            "away_score": 2,
+            "status": "complete",
+            "stage": "SF",
+        }
+    }
+    plan = build_research_plan(req, context, {"enabled": False})
+    calls = 0
+
+    def partial_search(query, limit=None, budget=None):
+        nonlocal calls
+        calls += 1
+        if calls > 1:
+            raise FirecrawlCallError("second query timed out")
+        source = QualifiedSource(
+            title="Argentina beat England 2-1 in World Cup semifinal match report",
+            url="https://apnews.com/article/england-argentina-world-cup-semifinal",
+            domain="apnews.com",
+            snippet="Argentina defeated England 2-1 after two goals in the semifinal.",
+            published_at="2026-07-15",
+            source_quality_score=1.0,
+            raw={},
+            source_type="wire",
+        )
+        video = QualifiedSource(
+            title="England vs Argentina semifinal preview and prediction",
+            url="https://youtube.com/watch?v=preview",
+            domain="youtube.com",
+            snippet="A pre-match prediction video.",
+            published_at="2026-07-14",
+            source_quality_score=0.55,
+            raw={},
+            source_type="video",
+        )
+        return SearchServiceResult(query=query, search_id="search-1", sources=[source, video], raw={})
+
+    monkeypatch.setattr("wcpa.agents.research_engine.search_web", partial_search)
+    collection = _collect_web_evidence(
+        plan,
+        SearchBudget(2, 4, 0, 3, 12000, 0),
+    )
+
+    assert len(collection.sources) == 1
+    assert collection.sources[0]["domain"] == "apnews.com"
+    assert all(source["domain"] != "youtube.com" for source in collection.sources)
+    assert collection.errors
+    assert any(item.get("sourceType") == "search_error" for item in collection.filtered)
+
+
+def test_post_match_prompt_separates_local_score_from_event_evidence():
+    req = _request(message="具体说说这场比赛怎么踢的", toolIntent="post_match_report")
+    context = {
+        "match": {
+            "home_team_raw": "英格兰",
+            "away_team_raw": "阿根廷",
+            "home_score": 1,
+            "away_score": 2,
+            "status": "complete",
+        },
+        "prediction": {
+            "home_win_probability": 0.321,
+            "draw_probability": 0.229,
+            "away_win_probability": 0.449,
+        },
+    }
+    plan = build_research_plan(req, context, {"enabled": False})
+
+    messages = _research_messages(req, context, plan, [], [], "")
+    combined = "\n".join(message["content"] for message in messages)
+
+    assert "does not support event chronology or tactics" in combined
+    assert "不得把推测写成比赛过程" in combined
+    assert "home_win_probability" not in messages[-1]["content"]
 
 
 def test_tournament_champion_question_uses_global_queries():
@@ -328,6 +473,143 @@ def test_quality_gate_does_not_require_sources_for_local_answers():
     assert not any("过短" in issue or "结构" in issue for issue in report.issues)
 
 
+def test_post_match_quality_gate_rejects_prediction_report():
+    answer = (
+        "### 结论倾向\n阿根廷胜，置信度65%。\n"
+        "### 常规时间概率\n英格兰32.1%，平局22.9%，阿根廷44.9%。\n"
+        "### 模型推断\nstrength: 权重53%。neutral_prior: 权重18%。\n"
+        "### 来源与边界\n本次采用8条联网来源。[1][2][3][4]"
+    )
+    sources = [
+        {"citationId": index, "relevanceScore": 0.9}
+        for index in range(1, 5)
+    ]
+
+    report = evaluate_research_answer(
+        answer=answer,
+        sources=sources,
+        context={"match": {"home_team_raw": "英格兰", "away_team_raw": "阿根廷"}},
+        min_total=20,
+        post_match_required=True,
+    )
+
+    assert not report.passed
+    assert any("错误输出了赛前预测" in issue for issue in report.issues)
+    assert _looks_like_prediction_report(answer)
+
+
+def test_post_match_model_fallback_preserves_retrieved_evidence():
+    answer = _deterministic_research_answer(
+        {
+            "intent": "post_match_report",
+            "match": {
+                "home_team_raw": "英格兰",
+                "away_team_raw": "阿根廷",
+                "home_score": 1,
+                "away_score": 2,
+            },
+        },
+        [
+            {
+                "citationId": 1,
+                "title": "England 1-2 Argentina match report",
+                "snippet": "Argentina advanced after a 2-1 semifinal win.",
+            }
+        ],
+        [],
+        reason="模型连接不可用。",
+    )
+
+    assert "已取得的赛后证据摘录" in answer
+    assert "England 1-2 Argentina match report" in answer
+    assert "没有取得可采用的赛后战报" not in answer
+
+
+def test_post_match_stream_repairs_prediction_shaped_model_answer(monkeypatch):
+    monkeypatch.setenv("WCPA_WEB_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("WCPA_SEARCH_PROVIDER", "firecrawl")
+    monkeypatch.setattr(
+        "wcpa.agents.research_engine.build_match_context",
+        lambda _match_id: {
+            "match": {
+                "home_team_raw": "英格兰",
+                "away_team_raw": "阿根廷",
+                "home_score": 1,
+                "away_score": 2,
+                "status": "complete",
+                "stage": "SF",
+            },
+            "prediction": {"home_win_probability": 0.321, "away_win_probability": 0.449},
+            "bracket": {},
+            "environment": {},
+            "team_history": {},
+        },
+    )
+    sources = [
+        {
+            "citationId": index,
+            "title": f"Post-match report {index}",
+            "url": f"https://example{index}.com/report",
+            "domain": f"example{index}.com",
+            "snippet": "England and Argentina semifinal match report with goals and substitutions.",
+            "source": "firecrawl",
+            "relevanceScore": 0.9,
+            "sourceQualityScore": 0.9,
+            "sourceType": "media",
+            "excerpt": "England and Argentina match chronology, goals, saves and substitutions.",
+            "supportedClaims": [],
+        }
+        for index in range(1, 5)
+    ]
+    monkeypatch.setattr(
+        "wcpa.agents.research_engine._collect_web_evidence",
+        lambda _plan, _budget: EvidenceCollection(sources=sources, filtered=[], errors=[]),
+    )
+    calls = 0
+
+    def fake_stream(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            yield (
+                "### 结论倾向\n英格兰32.1%，阿根廷44.9%。\n"
+                "### 常规时间概率\n平局22.9%。\n"
+                "### 模型推断\nstrength: 53%，neutral_prior: 18%。"
+            )
+            return
+        yield (
+            "### 比赛结论\n阿根廷以2-1击败英格兰，以下只整理来源明确支持的赛况。[1]\n"
+            "### 进球与关键事件\n报道记录了双方进球、扑救和关键事件，具体时间线逐项依据赛后来源整理。[1][2]\n"
+            "### 比赛如何展开\n上半场与下半场的比赛走势、双方攻守转换和场面变化均以报道正文为准，"
+            "不从最终比分反推控球或压迫效果。[2][3]\n"
+            "### 双方调整与胜负手\n换人调整、阵型变化和决定性回合只采用来源已经说明的内容，"
+            "未被报道支持的球员与分钟不会写入复盘。[3][4]\n"
+            "### 证据边界\n四条来源共同支持比赛身份和主要赛况；如果分钟或技术统计存在冲突，"
+            "应明确标记差异并等待官方比赛报告，而不是选择更戏剧化的说法。[1][2][3][4]\n"
+            "这是一份赛后复盘结构校验文本，重点验证系统不会再把胜平负概率、模型权重和赛前倾向当作比赛过程。"
+        )
+
+    monkeypatch.setattr("wcpa.agents.research_engine.stream_chat_completion", fake_stream)
+    req = _request(
+        message="请联网详细复盘已经结束的比赛，不要根据比分推测过程。",
+        context={"currentPage": "worldcup-dashboard", "currentMatchId": "eng-arg", "data": {"status": "complete"}},
+        llmConfig={
+            "provider": "deepseek",
+            "model": "deepseek-chat",
+            "apiKey": "sk-test",
+            "searchEnabled": True,
+        },
+        searchMode="required",
+        toolIntent="post_match_report",
+    )
+
+    text = "".join(stream_research_answer(req))
+
+    assert calls == 2
+    assert '"answer": "### 比赛结论' in text
+    assert '"predictionQuality": null' in text
+
+
 def test_local_answer_removes_unsupported_personnel_names_without_rosters():
     req = _request(message="W93 vs W94 怎么分析？")
     context = {
@@ -468,7 +750,7 @@ def test_research_stream_local_only_prioritizes_pitch_boundary_over_facts_only()
     assert "不能仅凭场馆常识断言" in text
 
 
-def test_research_stream_local_only_explains_bracket_placeholders():
+def test_research_stream_local_only_explains_bracket_placeholders(monkeypatch):
     req = _request(
         message="决赛 W101 vs W102 是哪两支球队？不要编。",
         context={
@@ -476,6 +758,15 @@ def test_research_stream_local_only_explains_bracket_placeholders():
             "currentMatchId": "SportRadar_Soccer_InternationalWorldCup_2026_Game_53452537",
         },
         toolIntent="general",
+    )
+    monkeypatch.setattr(
+        "wcpa.agents.research_engine.build_match_context",
+        lambda _match_id: {
+            "match": {"home_team_raw": "W101", "away_team_raw": "W102", "stage": "Final", "status": "scheduled"},
+            "bracket": {"has_placeholders": True},
+            "environment": {},
+            "team_history": {},
+        },
     )
     text = "".join(stream_research_answer(req))
 
@@ -486,7 +777,7 @@ def test_research_stream_local_only_explains_bracket_placeholders():
     assert "比利时队" not in text
 
 
-def test_research_stream_placeholder_prediction_uses_scenario_not_identity_shortcut():
+def test_research_stream_placeholder_prediction_uses_scenario_not_identity_shortcut(monkeypatch):
     req = _request(
         message="请预测 W101 vs W102 的决赛走势，做路径情景推演。",
         context={
@@ -494,6 +785,15 @@ def test_research_stream_placeholder_prediction_uses_scenario_not_identity_short
             "currentMatchId": "SportRadar_Soccer_InternationalWorldCup_2026_Game_53452537",
         },
         toolIntent="match_analysis",
+    )
+    monkeypatch.setattr(
+        "wcpa.agents.research_engine.build_match_context",
+        lambda _match_id: {
+            "match": {"home_team_raw": "W101", "away_team_raw": "W102", "stage": "Final", "status": "scheduled"},
+            "bracket": {"has_placeholders": True},
+            "environment": {},
+            "team_history": {},
+        },
     )
     text = "".join(stream_research_answer(req))
 
@@ -507,10 +807,49 @@ def test_research_stream_required_search_reports_config_error(monkeypatch):
     monkeypatch.setenv("WEB_SEARCH_ENABLED", "false")
     req = _request(searchMode="required")
     events = list(stream_research_answer(req))
-    payloads = [event for event in events if "event: error" in event]
+    payloads = [event for event in events if "event: search_warning" in event]
 
     assert payloads
     assert "联网研究不可用" in payloads[0]
+    assert any('"status": "evidence_unavailable"' in event for event in events)
+
+
+def test_post_match_without_web_evidence_refuses_to_invent_recap(monkeypatch):
+    monkeypatch.setenv("WCPA_WEB_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("WCPA_SEARCH_PROVIDER", "firecrawl")
+    monkeypatch.setattr(
+        "wcpa.agents.research_engine.build_match_context",
+        lambda _match_id: {
+            "match": {
+                "home_team_raw": "英格兰",
+                "away_team_raw": "阿根廷",
+                "home_score": 1,
+                "away_score": 2,
+                "winner_team_raw": "阿根廷",
+                "stage": "SF",
+                "status": "complete",
+            },
+            "bracket": {},
+            "environment": {},
+            "team_history": {},
+        },
+    )
+    monkeypatch.setattr(
+        "wcpa.agents.research_engine.search_web",
+        lambda *args, **kwargs: (_ for _ in ()).throw(FirecrawlCallError("timed out")),
+    )
+    req = _request(
+        message="请联网详细复盘这场比赛。",
+        context={"currentPage": "worldcup-dashboard", "currentMatchId": "eng-arg", "data": {"status": "complete"}},
+        searchMode="required",
+        toolIntent="post_match_report",
+    )
+
+    events = list(stream_research_answer(req))
+    text = "".join(events)
+
+    assert "不会根据比分或球队印象编造比赛是怎么踢的" in text
+    assert '"status": "evidence_unavailable"' in text
 
 
 def test_research_stream_firecrawl_402_degrades_without_stalling(monkeypatch):

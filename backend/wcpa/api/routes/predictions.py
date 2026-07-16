@@ -117,8 +117,6 @@ async def get_artifact_match(artifact_id: str, match_id: str):
         "publication_status": artifact.publication_status,
         "data_verified": artifact.data_verified,
         "prediction": prediction.model_dump(mode="json"),
-        "symbolic_signal": None,
-        "debate_transcript": None,
     }
 
 
@@ -154,16 +152,6 @@ async def get_champion_probabilities():
         "publication_status": artifact.publication_status,
         "probabilities": [item.model_dump(mode="json") for item in artifact.champion_probabilities],
     }
-
-
-@router.get("/upsets")
-async def get_upsets():
-    return _published_or_candidate().upset_alerts
-
-
-@router.get("/dark-horses")
-async def get_dark_horses():
-    return _published_or_candidate().dark_horses
 
 
 @router.get("/sources")

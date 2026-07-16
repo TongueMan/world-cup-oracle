@@ -7,15 +7,6 @@ team_strength:
   world_cup_experience_score: 0.05
   squad_health_score: 0.05
 
-track_fusion:
-  modes:
-    professional: { rational: 0.80, narrative: 0.15, symbolic: 0.05 }
-    balanced: { rational: 0.70, narrative: 0.20, symbolic: 0.10 }
-    upset: { rational: 0.55, narrative: 0.25, symbolic: 0.20 }
-    entertainment: { rational: 0.40, narrative: 0.30, symbolic: 0.30 }
-  default_mode: "balanced"
-  min_rational_weight: 0.60
-
 score_model:
   base_goals: 1.35
   home_advantage: 0.15

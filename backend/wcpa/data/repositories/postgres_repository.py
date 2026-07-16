@@ -260,14 +260,6 @@ CREATE TABLE IF NOT EXISTS worldcup_predictions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS worldcup_agent_debates (
-  id BIGSERIAL PRIMARY KEY,
-  prediction_version_id BIGINT REFERENCES worldcup_prediction_versions(id),
-  match_id TEXT NOT NULL,
-  agent_name TEXT NOT NULL,
-  payload JSONB NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
 """
 
 

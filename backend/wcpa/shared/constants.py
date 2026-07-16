@@ -23,23 +23,10 @@ class Stage(str, Enum):
     FINAL = "Final"
 
 
-class ConsensusType(str, Enum):
-    """共识类型 — Agent 辩论裁决结果分类。"""
-
-    STRONG_CONSENSUS = "strong_consensus"
-    RATIONAL_LEAD = "rational_lead"
-    RATIONAL_LEAD_WITH_SYMBOLIC_WARNING = "rational_lead_with_symbolic_warning"
-    NARRATIVE_DARK_HORSE_WARNING = "narrative_dark_horse_warning"
-    MULTI_TRACK_SPLIT = "multi_track_split"
-
-
 class PredictionMode(str, Enum):
     """预测模式。"""
 
     PROFESSIONAL = "professional"
-    BALANCED = "balanced"
-    UPSET = "upset"
-    ENTERTAINMENT = "entertainment"
 
 
 class Confederation(str, Enum):

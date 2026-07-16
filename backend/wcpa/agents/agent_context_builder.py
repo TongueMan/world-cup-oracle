@@ -60,6 +60,7 @@ def _build_odds_context(match: dict[str, Any]) -> dict[str, Any]:
 
 def _enrich_environment_from_match(match: dict[str, Any], environment: dict[str, Any] | None) -> dict[str, Any]:
     current = dict(environment or {})
+    current = _remove_time_misaligned_weather(match, current)
     venue = current.get("venue") if isinstance(current.get("venue"), dict) else {}
     if venue:
         return current
@@ -88,6 +89,33 @@ def _enrich_environment_from_match(match: dict[str, Any], environment: dict[str,
         }
     )
     return current
+
+
+def _remove_time_misaligned_weather(match: dict[str, Any], environment: dict[str, Any]) -> dict[str, Any]:
+    if not environment.get("weather") or _match_has_precise_kickoff_time(match):
+        return environment
+    current = dict(environment)
+    venue = current.get("venue") if isinstance(current.get("venue"), dict) else {}
+    current.pop("weather", None)
+    current["features"] = {}
+    current["summary"] = "比赛日期和场馆已经确认，但缺少精确开球时刻，不能把小时级天气称为开球时天气。"
+    current["data_status"] = "partial"
+    current["reason"] = "kickoff_clock_time_unavailable"
+    if venue:
+        current["source"] = venue.get("source") or current.get("source")
+        current["source_url"] = venue.get("source_url") or current.get("source_url")
+    return current
+
+
+def _match_has_precise_kickoff_time(match: dict[str, Any]) -> bool:
+    label = " ".join(
+        str(match.get(key) or "")
+        for key in ("kickoff_label", "date_label", "time_label")
+    )
+    if re.search(r"\b\d{1,2}:\d{2}\b", label):
+        return True
+    warnings = {str(item) for item in match.get("parse_warnings") or []}
+    return bool(match.get("kickoff_time")) and "kickoff_clock_time_missing" not in warnings and not label.strip()
 
 
 def _match_source_venue_id(match: dict[str, Any]) -> str:

@@ -543,19 +543,55 @@ function ReportFigure({ figure }: { figure: PredictionReportFigure }) {
   }
   if (figure.kind === 'champion_scenarios') {
     const rows = arrayRecords(data.scenarios);
+    const labels = rows.map((item) => teamName(String(item.opponent_team_id || '')));
     const option = {
       color: ['#d7a719', '#177245'],
-      tooltip: { trigger: 'axis', valueFormatter: (value: number) => formatPercent(value) },
-      legend: { data: ['成为对手的概率', '该情景下夺冠概率'] },
-      grid: { left: 68, right: 22, top: 48, bottom: 32 },
-      xAxis: { type: 'category', data: rows.map((item) => teamName(String(item.opponent_team_id || ''))) },
-      yAxis: { type: 'value', max: 1, axisLabel: { formatter: (value: number) => `${Math.round(value * 100)}%` } },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        valueFormatter: (value: number) => formatPercent(value),
+      },
+      legend: {
+        top: 0,
+        left: 8,
+        itemWidth: 12,
+        itemHeight: 8,
+        textStyle: { color: '#405148', fontSize: 12 },
+        data: ['成为对手的概率', '该情景下夺冠概率'],
+      },
+      grid: { left: 74, right: 34, top: 58, bottom: 22, containLabel: true },
+      xAxis: {
+        type: 'value',
+        max: 1,
+        axisLabel: { formatter: (value: number) => `${Math.round(value * 100)}%`, color: '#64746a' },
+        splitLine: { lineStyle: { color: '#e1e8e3' } },
+      },
+      yAxis: {
+        type: 'category',
+        inverse: true,
+        data: labels,
+        axisTick: { show: false },
+        axisLine: { lineStyle: { color: '#d8e1db' } },
+        axisLabel: { color: '#20372a', fontWeight: 700 },
+      },
       series: [
-        { name: '成为对手的概率', type: 'bar', data: rows.map((item) => safeNumber(item.encounter_probability)) },
-        { name: '该情景下夺冠概率', type: 'bar', data: rows.map((item) => safeNumber(item.conditional_win_probability)) },
+        {
+          name: '成为对手的概率',
+          type: 'bar',
+          barMaxWidth: 18,
+          data: rows.map((item) => safeNumber(item.encounter_probability)),
+          label: { show: true, position: 'right', formatter: ({ value }: { value: number }) => formatPercent(value), color: '#5a4a13', fontWeight: 700 },
+        },
+        {
+          name: '该情景下夺冠概率',
+          type: 'bar',
+          barMaxWidth: 18,
+          data: rows.map((item) => safeNumber(item.conditional_win_probability)),
+          label: { show: true, position: 'right', formatter: ({ value }: { value: number }) => formatPercent(value), color: '#123f27', fontWeight: 700 },
+        },
       ],
     };
-    return rows.length ? <FigureCard figure={figure}><ReactECharts option={option} style={{ height: 300 }} /></FigureCard> : null;
+    return rows.length ? <FigureCard figure={figure}><ReactECharts option={option} style={{ height: Math.max(260, rows.length * 72) }} notMerge /></FigureCard> : null;
   }
   if (figure.kind === 'match_model_comparison') {
     const match = arrayRecords(data.matches)[0];

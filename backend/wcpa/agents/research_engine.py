@@ -10,7 +10,8 @@ from typing import Any, Iterator, Literal
 
 from wcpa.agents.agent_context_builder import AgentContextError, build_match_context
 from wcpa.agents.chat import sse_event
-from wcpa.agents.firecrawl_client import FirecrawlCallError, FirecrawlConfigError
+from wcpa.agents.agent_search_planner import TEAM_SEARCH_ALIASES
+from wcpa.agents.firecrawl_client import FirecrawlCallError, FirecrawlClient, FirecrawlConfigError
 from wcpa.agents.providers import ProviderCallError, ProviderConfigError, resolve_provider, stream_chat_completion
 from wcpa.agents.prediction_bridge import (
     build_agent_match_prediction,
@@ -50,6 +51,13 @@ class ResearchPlan:
     rag_status: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class EvidenceCollection:
+    sources: list[dict[str, Any]]
+    filtered: list[dict[str, Any]]
+    errors: list[str]
+
+
 def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
     search_mode = _effective_search_mode(request)
     yield sse_event(
@@ -71,6 +79,9 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
     plan = build_research_plan(request, context, {"enabled": False})
     context["intent"] = plan.intent
     context["message"] = request.message
+    if plan.intent == "post_match_report":
+        context.pop("prediction", None)
+        context.pop("tournament_prediction", None)
     yield _reasoning_event(
         "plan",
         "拆解问题",
@@ -93,9 +104,6 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
     auth = evaluate_search_authorization("chat", search_mode != "local_only")
     if search_mode == "required" and not auth.can_search:
         search_error = f"联网研究不可用：{auth.message}"
-        if not _is_prediction_question(request.message):
-            yield sse_event("error", {"message": search_error})
-            return
         filtered.append({"title": "Search unavailable", "reason": search_error, "sourceType": "search_error"})
         yield sse_event("search_warning", {"message": search_error})
 
@@ -108,7 +116,17 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
         yield sse_event("progress", {"message": "正在联网检索证据"})
         try:
             budget = load_search_deployment_config().budget
-            sources, filtered = _collect_web_evidence(plan, budget)
+            collection = _collect_web_evidence(plan, budget)
+            sources = collection.sources
+            filtered.extend(collection.filtered)
+            if collection.errors:
+                search_error = "；".join(collection.errors[:2])
+                warning = (
+                    f"部分联网查询失败，已保留 {len(sources)} 条可用来源。"
+                    if sources
+                    else search_error
+                )
+                yield sse_event("search_warning", {"message": warning})
         except (FirecrawlConfigError, FirecrawlCallError) as exc:
             search_error = _friendly_search_error(exc)
             filtered.append({"title": "Search unavailable", "reason": search_error, "sourceType": "search_error"})
@@ -174,7 +192,7 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
         _reasoning_compose_summary(plan, sources),
     )
     answer_parts: list[str] = []
-    for token in _stream_generate_answer(request, context, plan, sources, [], search_error):
+    for token in _stream_generate_answer(request, context, plan, sources, [], search_error=search_error):
         answer_parts.append(token)
         yield sse_event("token", {"content": token})
 
@@ -189,11 +207,52 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
         match_required=_quality_match_required(request, plan),
         structure_required=_quality_structure_required(request, plan),
         concise_allowed=_quality_concise_allowed(request, plan),
+        post_match_required=plan.intent == "post_match_report",
     )
+    if not quality.passed and sources and request.llm_config.api_key.strip():
+        yield _reasoning_event(
+            "revise",
+            "修订答案",
+            "首轮回答未完全满足证据和结构要求，正在基于同一批来源重新组织。",
+            {"issues": quality.issues[:4]},
+        )
+        repair_instruction = (
+            "上一版回答未通过质量检查。请完全重写，不要解释修订过程。"
+            f"需要解决的问题：{'；'.join(quality.issues[:4]) or '引用、结构或事实边界不足'}。"
+            "每个赛况事实都要紧邻引用；不要复述无关晋级路径；不要用‘很可能’编造比赛过程。"
+        )
+        repaired_raw = "".join(
+            _stream_generate_answer(
+                request,
+                context,
+                plan,
+                sources,
+                [],
+                search_error=search_error,
+                rewrite_instruction=repair_instruction,
+            )
+        )
+        repaired_answer = _finalize_answer(repaired_raw, sources, request=request, context=context, plan=plan)
+        repaired_quality = evaluate_research_answer(
+            answer=repaired_answer,
+            sources=sources,
+            context=context,
+            min_total=_quality_min_total(request, plan, sources),
+            source_required=_quality_source_required(request, plan),
+            match_required=_quality_match_required(request, plan),
+            structure_required=_quality_structure_required(request, plan),
+            concise_allowed=_quality_concise_allowed(request, plan),
+            post_match_required=plan.intent == "post_match_report",
+        )
+        if repaired_quality.passed or repaired_quality.total >= quality.total:
+            final_answer = repaired_answer
+            quality = repaired_quality
+    if plan.intent == "post_match_report" and _looks_like_prediction_report(final_answer):
+        final_answer = _post_match_wrong_mode_answer(context, sources)
     yield _reasoning_event(
         "verify",
         "质量校验",
-        f"检查引用、事实边界、结构和可读性，评分 {quality.total}/30。",
+        "已检查引用、事实边界、结构和可读性。",
         {"passed": quality.passed, "score": quality.total, "issues": quality.issues[:4]},
     )
     yield sse_event(
@@ -201,7 +260,11 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
         {"passed": quality.passed, "score": quality.total, "dimensions": quality.dimensions, "issues": quality.issues},
     )
     prediction_quality = None
-    structured_prediction = _prediction_from_context(context)
+    structured_prediction = (
+        _prediction_from_context(context)
+        if plan.output_contract.get("prediction_required")
+        else None
+    )
     if structured_prediction is not None:
         prediction_quality = evaluate_prediction_satisfaction(
             structured_prediction,
@@ -218,13 +281,17 @@ def stream_research_answer(request: AgentResearchRequest) -> Iterator[str]:
                 "issues": prediction_quality.issues,
             },
         )
+    final_status = "ok" if quality.passed else "quality_warning"
+    if search_mode == "required" and not sources:
+        final_status = "evidence_unavailable"
     yield sse_event(
         "done",
         {
-            "status": "ok" if quality.passed else "quality_warning",
+            "status": final_status,
             "answer": final_answer,
             "sources": sources,
             "diagnostics": {
+                "intent": plan.intent,
                 "searchedCount": len(sources) + len(filtered),
                 "adoptedCount": len(sources),
                 "filteredCount": len(filtered),
@@ -260,6 +327,8 @@ def build_research_plan(
     match = context.get("match") or {}
     environment = context.get("environment") or {}
     bracket = context.get("bracket") or {}
+    match_status = str(match.get("status") or request.context.data.get("status") or "").casefold()
+    completed_match = match_status in {"complete", "completed", "final", "closed"}
 
     page_scope = context.get("scope") in {"page", "tournament"}
     intent: ResearchIntent = request.tool_intent if request.tool_intent != "general" else ("general" if page_scope else "match_analysis")
@@ -271,6 +340,8 @@ def build_research_plan(
         intent = "weather_environment"
     elif "previous" in lowered or "上一" in message:
         intent = "previous_match_report"
+    elif request.tool_intent == "post_match_report" or (completed_match and not page_scope):
+        intent = "post_match_report"
 
     page = context.get("page") or {}
     home = str(match.get("home_team_raw") or request.context.data.get("home_team_raw") or request.context.data.get("homeTeam") or "")
@@ -282,6 +353,7 @@ def build_research_plan(
 
     home_search = _team_search_name(home)
     away_search = _team_search_name(away)
+    stage_search = _stage_search_name(stage)
 
     if intent == "head_to_head_history":
         queries = [
@@ -318,10 +390,24 @@ def build_research_plan(
             "2026 FIFA World Cup knockout path contenders",
             "2026 FIFA World Cup latest team news injuries lineup",
         ]
-    else:
-        matchup = f"{home} {away}".strip() or "2026 FIFA World Cup"
+    elif intent == "post_match_report":
+        matchup = f"{home_search} vs {away_search}".strip() or "2026 FIFA World Cup match"
+        verified_score = _verified_match_score(match)
+        result_matchup = (
+            f"{home_search} {verified_score} {away_search}"
+            if verified_score
+            else matchup
+        )
         queries = [
-            f"{matchup} {stage} official match preview",
+            f"2026 FIFA World Cup {result_matchup} {stage_search} match report goals scorers highlights",
+            f'"{result_matchup}" 2026 World Cup as it happened reaction BBC AP Reuters',
+            f'"{result_matchup}" 2026 World Cup post match analysis stats possession shots',
+            f"site:fifa.com {matchup} match report highlights 2026",
+        ]
+    else:
+        matchup = f"{home_search} vs {away_search}".strip() or "2026 FIFA World Cup"
+        queries = [
+            f"{matchup} {stage_search} official match preview",
             f"{matchup} injuries lineup official",
             f"{matchup} tactical analysis",
             f"{matchup} head to head World Cup",
@@ -332,9 +418,28 @@ def build_research_plan(
     output_contract = {
         "facts_only": _wants_facts_only(message),
         "scorelines_only": "scoreline" in lowered,
-        "no_citations": not bool(context.get("sources")),
+        "no_citations": False,
     }
-    if _is_prediction_question(intent_text):
+    if intent == "post_match_report":
+        output_contract.update(
+            {
+                "answer_mode": "post_match_report",
+                "required_sections": [
+                    "比赛结论",
+                    "进球与关键事件",
+                    "比赛如何展开",
+                    "双方调整与胜负手",
+                    "证据边界",
+                ],
+                "forbid_speculative_recap": True,
+                "local_facts_are_context_not_match_events": True,
+                "instruction": (
+                    "优先回答比赛实际如何进行。按时间顺序写关键事件，再解释攻守变化和换人影响；"
+                    "赛况、球员、分钟和技术统计只能来自联网来源，本地比分只能确认结果。"
+                ),
+            }
+        )
+    if intent != "post_match_report" and _is_prediction_question(intent_text):
         output_contract["prediction_required"] = True
     if _is_tournament_question(intent_text):
         output_contract["prediction_shape"] = (
@@ -364,33 +469,163 @@ def build_research_plan(
     )
 
 
-def _collect_web_evidence(plan: ResearchPlan, budget: SearchBudget) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    adopted: list[dict[str, Any]] = []
+def _collect_web_evidence(plan: ResearchPlan, budget: SearchBudget) -> EvidenceCollection:
+    candidates: dict[str, QualifiedSource] = {}
     filtered: list[dict[str, Any]] = []
+    errors: list[str] = []
     limit = max(1, min(4, budget.max_results))
-    max_queries = max(1, min(2, budget.max_queries_per_request))
+    max_queries = max(1, min(3, budget.max_queries_per_request))
     active_budget = SearchBudget(
         max_queries_per_request=max_queries,
         max_results=limit,
-        scrape_top_n=budget.scrape_top_n,
-        timeout_seconds=max(3, min(6, budget.timeout_seconds)),
+        scrape_top_n=min(3, budget.scrape_top_n),
+        timeout_seconds=max(3, min(8, budget.timeout_seconds)),
         max_page_chars=budget.max_page_chars,
         cache_ttl_seconds=budget.cache_ttl_seconds,
     )
-    deadline = time.monotonic() + min(10, active_budget.timeout_seconds * max_queries + 1)
+    deadline = time.monotonic() + min(28, active_budget.timeout_seconds * max_queries + 4)
+    relevance_context = {
+        "match": plan.match_context,
+        "environment": plan.environment_context,
+        "bracket": plan.bracket_context,
+        "intent": plan.intent,
+    }
     for query in plan.queries[:max_queries]:
         if time.monotonic() >= deadline:
-            raise FirecrawlCallError("Firecrawl search exceeded the Agent response budget.")
-        result = search_web(query, limit=limit, budget=active_budget)
+            errors.append("联网检索超过本次回答的时间预算。")
+            break
+        try:
+            result = search_web(query, limit=limit, budget=active_budget)
+        except (FirecrawlConfigError, FirecrawlCallError) as exc:
+            message = _friendly_search_error(exc)
+            errors.append(message)
+            filtered.append(
+                {"title": query, "reason": message, "sourceType": "search_error"}
+            )
+            continue
+        except Exception as exc:
+            message = _friendly_search_error(exc)
+            errors.append(message)
+            filtered.append(
+                {"title": query, "reason": message, "sourceType": "search_error"}
+            )
+            continue
         for source in result.sources:
-            enriched = source_with_relevance(source, {"match": plan.match_context, "environment": plan.environment_context, "bracket": plan.bracket_context, "intent": plan.intent})
-            if enriched.relevance_score < 0.25:
-                filtered.append({"title": enriched.title, "url": enriched.url, "reason": "low relevance"})
+            enriched = source_with_relevance(source, relevance_context)
+            if enriched.source_type in {"social", "video"}:
+                filtered.append({"title": enriched.title, "url": enriched.url, "reason": "非首选社交或视频来源"})
                 continue
-            adopted.append(_source_payload(enriched, len(adopted) + 1, plan))
-            if len(adopted) >= 8:
-                return adopted, filtered
-    return adopted, filtered
+            if enriched.relevance_score < _minimum_source_relevance(plan):
+                filtered.append({"title": enriched.title, "url": enriched.url, "reason": "与当前问题相关性不足"})
+                continue
+            previous = candidates.get(enriched.url)
+            if previous is None or _source_rank(enriched) > _source_rank(previous):
+                candidates[enriched.url] = enriched
+
+    ranked = sorted(candidates.values(), key=_source_rank, reverse=True)[:8]
+    if ranked and active_budget.scrape_top_n > 0:
+        client = FirecrawlClient("", active_budget)
+        scraped_count = 0
+        enriched_rows: list[QualifiedSource] = []
+        for source in ranked:
+            if scraped_count >= active_budget.scrape_top_n or time.monotonic() >= deadline:
+                enriched_rows.append(source)
+                continue
+            try:
+                page = client.scrape(source.url)
+                excerpt = _relevant_page_excerpt(page.markdown, plan)
+                if excerpt:
+                    source = source_with_relevance(source, relevance_context, excerpt)
+                scraped_count += 1
+            except (FirecrawlConfigError, FirecrawlCallError) as exc:
+                filtered.append(
+                    {
+                        "title": source.title,
+                        "url": source.url,
+                        "reason": f"正文读取失败，保留搜索摘要：{_friendly_search_error(exc)}",
+                        "sourceType": "scrape_warning",
+                    }
+                )
+            except Exception as exc:
+                filtered.append(
+                    {
+                        "title": source.title,
+                        "url": source.url,
+                        "reason": f"正文读取失败，保留搜索摘要：{_friendly_search_error(exc)}",
+                        "sourceType": "scrape_warning",
+                    }
+                )
+            enriched_rows.append(source)
+        ranked = sorted(enriched_rows, key=_source_rank, reverse=True)
+
+    adopted = [_source_payload(source, index + 1, plan) for index, source in enumerate(ranked)]
+    return EvidenceCollection(sources=adopted, filtered=filtered, errors=_dedupe_strings(errors))
+
+
+def _minimum_source_relevance(plan: ResearchPlan) -> float:
+    if plan.intent == "post_match_report":
+        return 0.7
+    if plan.intent == "head_to_head_history":
+        return 0.65
+    if plan.intent == "weather_environment":
+        return 0.55
+    return 0.5
+
+
+def _source_rank(source: QualifiedSource) -> tuple[float, float, float, int]:
+    type_rank = {"official": 3.0, "wire": 2.5, "media": 2.0}.get(source.source_type, 1.0)
+    return (
+        type_rank,
+        source.relevance_score,
+        source.source_quality_score,
+        1 if source.excerpt else 0,
+    )
+
+
+def _relevant_page_excerpt(markdown: str, plan: ResearchPlan, limit: int = 3600) -> str:
+    if not markdown.strip():
+        return ""
+    text = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", markdown)
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"https?://\S+", " ", text)
+    text = re.sub(r"(?im)^\s*(advertisement|cookie settings|sign in|share)\s*$", " ", text)
+    blocks = [
+        re.sub(r"\s+", " ", block).strip(" #>*-\t")
+        for block in re.split(r"\n{2,}|(?<=[.!?。！？])\s+", text)
+    ]
+    blocks = [block for block in blocks if 35 <= len(block) <= 1000]
+    match = plan.match_context
+    team_terms = {
+        value.casefold()
+        for value in (
+            str(match.get("home_team_raw") or ""),
+            str(match.get("away_team_raw") or ""),
+            _team_search_name(str(match.get("home_team_raw") or match.get("home_team_id") or "")),
+            _team_search_name(str(match.get("away_team_raw") or match.get("away_team_id") or "")),
+        )
+        if value
+    }
+    event_terms = (
+        "goal", "scor", "minute", "equal", "lead", "winner", "assist", "header", "shot",
+        "save", "substitut", "possession", "press", "attack", "defen", "进球", "分钟", "扳平",
+        "领先", "绝杀", "助攻", "射门", "扑救", "换人", "控球", "逼抢", "进攻", "防守",
+    )
+    scored: list[tuple[int, int, str]] = []
+    for index, block in enumerate(blocks):
+        lowered = block.casefold()
+        score = sum(2 for term in team_terms if term in lowered)
+        score += sum(1 for term in event_terms if term in lowered)
+        if re.search(r"\b\d{1,3}(?:st|nd|rd|th)?\s+(?:minute|min)\b|第\s*\d+\s*分钟", lowered):
+            score += 3
+        if score >= 2:
+            scored.append((score, index, block))
+    selected = sorted(sorted(scored, reverse=True)[:18], key=lambda item: item[1])
+    excerpt = "\n".join(item[2] for item in selected)
+    return excerpt[:limit]
+
+
+def _dedupe_strings(values: list[str]) -> list[str]:
+    return list(dict.fromkeys(value for value in values if value))
 
 
 def _source_payload(source: QualifiedSource, citation_id: int, plan: ResearchPlan) -> dict[str, Any]:
@@ -418,19 +653,31 @@ def _stream_generate_answer(
     sources: list[dict[str, Any]],
     rag_chunks: list[Any],
     search_error: str = "",
+    rewrite_instruction: str = "",
 ) -> Iterator[str]:
     static_answer = _precomputed_final_answer(request, context, plan, sources)
     if static_answer is not None:
         yield from _stream_answer(static_answer)
+        return
+    if plan.intent == "post_match_report" and not sources:
+        yield from _stream_answer(_post_match_evidence_unavailable_answer(context, search_error))
         return
     if not request.llm_config.api_key.strip():
         yield from _stream_answer(_deterministic_research_answer(context, sources, rag_chunks, reason=search_error))
         return
 
     provider = resolve_provider(request.llm_config.provider, request.llm_config.model, request.llm_config.base_url)
-    messages = _research_messages(request, context, plan, sources, rag_chunks, search_error)
+    messages = _research_messages(
+        request,
+        context,
+        plan,
+        sources,
+        rag_chunks,
+        rewrite_instruction,
+        search_error=search_error,
+    )
     try:
-        yield from stream_chat_completion(provider, request.llm_config.api_key, messages, temperature=0.28, timeout=120)
+        yield from stream_chat_completion(provider, request.llm_config.api_key, messages, temperature=0.35, timeout=120)
     except (ProviderConfigError, ProviderCallError) as exc:
         yield from _stream_answer(_deterministic_research_answer(context, sources, rag_chunks, reason=str(exc)))
 
@@ -442,31 +689,49 @@ def _research_messages(
     sources: list[dict[str, Any]],
     rag_chunks: list[Any],
     rewrite_instruction: str,
+    search_error: str = "",
 ) -> list[dict[str, str]]:
     system = (
-        "You are World Cup Oracle's Chinese research agent. Answer in Chinese, stream naturally, "
-        "cite only adopted sources with [n], and do not invent rosters, injuries, coaches, venues, or scores. "
+        "You are World Cup Oracle's Chinese research editor. Synthesize the supplied local facts and web documents "
+        "into a direct, specific answer to the user's actual question. Answer in natural Chinese and avoid canned prose. "
+        "Local structured data can establish the fixture, status, score, venue and tournament path, but it cannot establish "
+        "how the match unfolded. Web source excerpts establish match events only to the extent they explicitly say so. "
+        "Cite only adopted sources with [n], placing citations immediately after the supported claim. "
+        "Never invent rosters, injuries, coaches, venues, scores, scorers, minutes, statistics or tactical events. "
+        "Do not turn scorelines, team reputation or earlier results into a fictional match narrative. "
         "If placeholders such as W101/L102 appear, explain that they are bracket slots, not confirmed teams. "
         "If local data lacks historical head-to-head records, say only that local data does not include them; never infer the teams never met. "
         "For head-to-head history questions, prioritize previous meeting dates, competitions and scores over match-preview analysis. "
-        "不得点名具体球员/教练作为当前事实 unless the provided context or sources support it. "
+        "For post-match reports, lead with the actual chronology, then explain tactical changes and decisive moments. "
+        "Every player, minute, substitution, statistic and tactical event in a post-match report must be supported by a cited source. "
+        "If sources conflict, name the conflict instead of silently choosing a detail. If no usable post-match source exists, "
+        "state that limitation and report only verified local facts. "
+        "不得点名具体球员/教练作为当前事实，除非 sources 或 structured_context 明确支持。 "
         "For prediction questions, do not refuse just because the event is future or uncertain; make a bounded forecast with confidence and caveats. "
         "Do not provide betting advice, stake sizing, or guaranteed-outcome language. "
-        "If output_requirements.current_contenders_only is provided, restrict title-probability forecasts to those teams only."
+        "If output_requirements.current_contenders_only is provided, restrict title-probability forecasts to those teams only. "
+        "Do not repeat the full tournament path unless the user asks for it or it materially explains the match."
     )
     user_history = [item.content for item in request.history if item.role == "user"][-6:]
     payload = {
         "user_question": request.message,
         "intent": plan.intent,
-        "structured_context": _public_context(context),
+        "structured_context": _public_context(context, plan.intent),
         "conversation_context": {"user_corrections": user_history},
         "output_requirements": plan.output_contract,
         "fact_boundaries": {
-            "teams.current_rosters": "unsupported unless explicitly present in sources/context",
-            "rule": "不得点名具体球员/教练作为当前事实",
+            "teams.current_rosters": "不得点名具体球员/教练作为当前事实，除非 sources 或 structured_context 明确支持",
+            "local_match_data": "supports identity, status, score, venue and bracket path; does not support event chronology or tactics",
+            "web_documents": "support only claims explicitly present in title, snippet or excerpt",
+            "rule": "赛况事实必须可追溯；不得把推测写成比赛过程",
         },
         "sources": sources,
         "rag_chunks": [str(item)[:800] for item in rag_chunks],
+        "search_status": {
+            "requested": _effective_search_mode(request) != "local_only",
+            "adopted_source_count": len(sources),
+            "error": search_error,
+        },
     }
     if rewrite_instruction:
         payload["rewrite_instruction"] = rewrite_instruction
@@ -537,6 +802,10 @@ def _deterministic_research_answer(
 ) -> str:
     match = context.get("match") or {}
     label = _match_label(match) or "current question"
+    if context.get("intent") == "post_match_report":
+        if sources:
+            return _post_match_source_only_answer(context, sources, reason)
+        return _post_match_evidence_unavailable_answer(context, reason)
     if context.get("intent") == "general" and _is_tournament_question(str(context.get("message") or "")):
         return _tournament_prediction_answer(context, None, sources)
     if context.get("scope") in {"page", "tournament"} and not match:
@@ -571,6 +840,110 @@ def _deterministic_research_answer(
         f"模型生成未完成：{reason}" if reason else "Lineups, injuries, weather and tactical news still need authoritative confirmation.",
     ]
     return "\n".join(lines)
+
+
+def _post_match_evidence_unavailable_answer(context: dict[str, Any], reason: str = "") -> str:
+    match = context.get("match") or {}
+    label = _match_label(match) or "当前比赛"
+    score = _verified_match_score(match)
+    winner = match.get("winner_team_raw") or match.get("winner_team_id")
+    result_line = f"- 本地赛程确认：{label}，最终比分 {score}。" if score else f"- 本地赛程确认比赛为 {label}。"
+    if winner:
+        result_line += f" 晋级方是{winner}。"
+    reason_line = reason or "本次联网检索没有取得可采用的赛后战报。"
+    return "\n".join(
+        [
+            "### 当前能确认的结果",
+            result_line,
+            "### 为什么暂时不能详细复盘",
+            f"- {reason_line}",
+            "- 本地数据只记录赛程、比分和晋级路径，没有进球时间线、射门统计、换人或战术事件。",
+            "- 在取得权威战报正文前，我不会根据比分或球队印象编造比赛是怎么踢的。",
+        ]
+    )
+
+
+def _post_match_wrong_mode_answer(context: dict[str, Any], sources: list[dict[str, Any]]) -> str:
+    match = context.get("match") or {}
+    label = _match_label(match) or "当前比赛"
+    score = _verified_match_score(match)
+    result = f"{label}，最终比分 {score}" if score else label
+    source_lines = [
+        f"- [{source.get('citationId')}] {source.get('title')}"
+        for source in sources[:5]
+        if source.get("citationId") and source.get("title")
+    ]
+    return "\n".join(
+        [
+            "### 比赛结论",
+            f"- 本地赛程能够确认：{result}。",
+            "### 进球与关键事件",
+            "- 本轮模型输出错误地落入了赛前预测模式，因此没有把该内容作为比赛事实展示。",
+            "### 比赛如何展开",
+            "- 当前无法安全给出完整复盘；系统不会用胜平负概率或模型权重替代实际比赛过程。",
+            "### 双方调整与胜负手",
+            "- 需要重新依据赛后报道中的时间线、换人和攻守事件生成，不能从比分反推。",
+            "### 已取得但尚待重新整理的赛后来源",
+            *(source_lines or ["- 本轮没有可列出的赛后来源。"]),
+        ]
+    )
+
+
+def _post_match_source_only_answer(
+    context: dict[str, Any],
+    sources: list[dict[str, Any]],
+    reason: str = "",
+) -> str:
+    match = context.get("match") or {}
+    label = _match_label(match) or "当前比赛"
+    score = _verified_match_score(match)
+    result = f"{label}，最终比分 {score}" if score else label
+    evidence_lines: list[str] = []
+    for source in sources[:5]:
+        citation_id = source.get("citationId")
+        title = str(source.get("title") or "赛后来源").strip()
+        excerpt = re.sub(
+            r"\s+",
+            " ",
+            str(source.get("excerpt") or source.get("snippet") or "").strip(),
+        )
+        citation = f"[{citation_id}]" if citation_id else ""
+        evidence_lines.append(f"- {title}：{excerpt[:420] or '正文摘要暂不可用。'}{citation}")
+    model_note = reason or "当前没有可用模型完成中文归纳。"
+    return "\n".join(
+        [
+            "### 比赛结论",
+            f"- 本地赛程能够确认：{result}。",
+            "### 已取得的赛后证据摘录",
+            *evidence_lines,
+            "### 还不能安全下结论的部分",
+            f"- {model_note}",
+            "- 上面是可追溯的原始报道摘录，不是完整战术复盘；在完成可靠归纳前，不会用赛前概率替代比赛过程。",
+        ]
+    )
+
+
+def _verified_match_score(match: dict[str, Any]) -> str:
+    home_score = match.get("home_score")
+    away_score = match.get("away_score")
+    if home_score is None or away_score is None:
+        return ""
+    return f"{home_score}-{away_score}"
+
+
+def _looks_like_prediction_report(answer: str) -> bool:
+    markers = (
+        "常规时间概率",
+        "最终晋级",
+        "期望进球",
+        "模型推断",
+        "neutral_prior",
+        "strength:",
+        "预测对象",
+        "赛前概率判断",
+    )
+    lowered = answer.casefold()
+    return sum(marker.casefold() in lowered for marker in markers) >= 2
 
 
 def _facts_only_answer(context: dict[str, Any], request: AgentResearchRequest, plan: ResearchPlan, sources: list[dict[str, Any]]) -> str:
@@ -722,7 +1095,7 @@ def _bracket_placeholder_answer(context: dict[str, Any], request: AgentResearchR
         [
             "淘汰赛路径占位说明：",
             f"- {home} vs {away} 是赛程占位符，不是已确定球队。",
-            "- W/L 编号代表某场比赛的胜者或负者，需要等前序比赛结束后才能落位。",
+            "- 双方尚未确定；W/L 编号代表某场比赛的胜者或负者，需要等前序比赛结束后才能落位。",
             "- 因此不能把占位符写成任何已确定球队或具体球员阵容。",
         ]
     )
@@ -816,6 +1189,8 @@ def _reasoning_plan_summary(request: AgentResearchRequest, plan: ResearchPlan) -
     scope = "整届赛事" if _is_tournament_question(request.message) else "当前比赛或页面"
     if plan.intent == "weather_environment":
         focus = "场馆、天气、草皮和环境变量"
+    elif plan.intent == "post_match_report":
+        focus = "进球时间线、比赛走势、双方调整和赛后反应"
     elif plan.intent == "previous_match_report":
         focus = "上一轮对手、比分、晋级方式和对当前比赛的影响"
     elif plan.intent == "general":
@@ -829,6 +1204,10 @@ def _reasoning_compose_summary(plan: ResearchPlan, sources: list[dict[str, Any]]
     evidence_note = "带引用整合外部来源" if sources else "不伪装联网，明确使用本地数据边界"
     if plan.intent == "head_to_head_history":
         return f"优先整理历史交锋日期、赛事和比分；{evidence_note}，本地缺失不等于历史不存在。"
+    if plan.intent == "post_match_report":
+        if sources:
+            return "先还原关键事件时间线，再用来源支持的事实解释攻守变化和胜负手。"
+        return "只保留本地可确认的赛果，并明确说明缺少赛后战报，不根据比分虚构过程。"
     if plan.output_contract.get("facts_only"):
         return f"按用户要求只输出确定事实，{evidence_note}。"
     if plan.bracket_context.get("has_placeholders"):
@@ -874,8 +1253,8 @@ def _build_context(request: AgentResearchRequest) -> dict[str, Any]:
     return context
 
 
-def _public_context(context: dict[str, Any]) -> dict[str, Any]:
-    return {
+def _public_context(context: dict[str, Any], intent: ResearchIntent | str = "") -> dict[str, Any]:
+    public = {
         "match": context.get("match") or {},
         "environment": context.get("environment") or {},
         "bracket": context.get("bracket") or {},
@@ -884,6 +1263,10 @@ def _public_context(context: dict[str, Any]) -> dict[str, Any]:
         "prediction": context.get("prediction") or {},
         "tournament_prediction": context.get("tournament_prediction") or {},
     }
+    if intent == "post_match_report":
+        public["prediction"] = {}
+        public["tournament_prediction"] = {}
+    return public
 
 
 def _prediction_from_context(context: dict[str, Any]):
@@ -935,6 +1318,7 @@ def _explicitly_requests_web_search(message: str) -> bool:
 def _team_search_name(name: str) -> str:
     normalized = name.strip().casefold()
     aliases = {
+        **{key.casefold(): value for key, value in TEAM_SEARCH_ALIASES.items()},
         "瑞士": "Switzerland",
         "sui": "Switzerland",
         "哥伦比亚": "Colombia",
@@ -947,8 +1331,22 @@ def _team_search_name(name: str) -> str:
         "摩洛哥": "Morocco",
         "美国": "United States",
         "比利时": "Belgium",
+        "arg": "Argentina",
+        "eng": "England",
     }
     return aliases.get(normalized, name or "team")
+
+
+def _stage_search_name(stage: str) -> str:
+    aliases = {
+        "r32": "round of 32",
+        "r16": "round of 16",
+        "qf": "quarterfinal",
+        "sf": "semifinal",
+        "final": "final",
+        "thirdplace": "third-place match",
+    }
+    return aliases.get(stage.strip().casefold(), stage or "World Cup")
 
 
 def _is_pitch_question(message: str) -> bool:

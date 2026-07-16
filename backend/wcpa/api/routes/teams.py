@@ -13,7 +13,7 @@ async def get_teams():
     """Return verified real teams only."""
     snapshots = WebCollector().collect_all()
     try:
-        teams, _, _, _ = load_strict_real_dataset([snapshot.status for snapshot in snapshots])
+        teams, _, _ = load_strict_real_dataset([snapshot.status for snapshot in snapshots])
     except DataUnavailableError as exc:
         raise HTTPException(status_code=409, detail=exc.report.model_dump(mode="json")) from exc
     return [team.model_dump(mode="json") for team in teams]

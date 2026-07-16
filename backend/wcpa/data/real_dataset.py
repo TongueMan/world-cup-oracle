@@ -11,14 +11,12 @@ from pathlib import Path
 
 from wcpa.schemas.artifact import DataQualityReport, DataSourceStatus
 from wcpa.schemas.match import Match
-from wcpa.schemas.narrative import NarrativeProfile
 from wcpa.schemas.team import Team
 from wcpa.shared.paths import NORMALIZED_DIR
 
 
 REAL_TEAMS_FILE = NORMALIZED_DIR / "teams.real.json"
 REAL_MATCHES_FILE = NORMALIZED_DIR / "matches.real.json"
-REAL_NARRATIVES_FILE = NORMALIZED_DIR / "narratives.real.json"
 
 FORBIDDEN_SOURCE_MARKERS = {"fixture", "fixtures", "fixture_expansion", "fallback", "demo", "sample"}
 
@@ -33,7 +31,7 @@ class DataUnavailableError(RuntimeError):
 
 def load_strict_real_dataset(
     source_statuses: list[DataSourceStatus],
-) -> tuple[list[Team], list[Match], list[NarrativeProfile], DataQualityReport]:
+) -> tuple[list[Team], list[Match], DataQualityReport]:
     missing: list[str] = []
     invalid_records: list[dict] = []
 
@@ -115,11 +113,6 @@ def load_strict_real_dataset(
 
     teams = [Team(**entry) for entry in raw_teams]
     matches = [Match(**entry) for entry in raw_matches]
-    narratives = (
-        [NarrativeProfile(**entry) for entry in _read_json_list(REAL_NARRATIVES_FILE)]
-        if REAL_NARRATIVES_FILE.exists()
-        else []
-    )
 
     if len(teams) < 48:
         invalid_records.append({"dataset": "teams", "reason": "expected_48_teams", "count": len(teams)})
@@ -155,7 +148,7 @@ def load_strict_real_dataset(
         source_statuses=source_statuses,
         message="Agent 证据与真实数据已通过严格校验。",
     )
-    return teams, matches, narratives, report
+    return teams, matches, report
 
 
 def build_unavailable_report(source_statuses: list[DataSourceStatus]) -> DataQualityReport:

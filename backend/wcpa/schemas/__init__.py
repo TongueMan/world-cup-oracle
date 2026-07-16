@@ -41,18 +41,6 @@ from wcpa.schemas.prediction import (  # noqa: E402
     ScorelineProbability,
     SemanticProbabilitySignal,
 )
-from wcpa.schemas.narrative import NarrativeProfile  # noqa: E402
-from wcpa.schemas.symbolic import (  # noqa: E402
-    SymbolicSignal,
-    TarotSignal,
-    IChingSignal,
-    AstrologySignal,
-)
-from wcpa.schemas.debate import (  # noqa: E402
-    DebateTranscript,
-    AgentOpinion,
-    JudgeDecision,
-)
 from wcpa.schemas.artifact import (  # noqa: E402
     TournamentPrediction,
     TeamFeatures,
@@ -93,14 +81,6 @@ __all__ = [
     "ProbabilityComponent",
     "ScorelineProbability",
     "SemanticProbabilitySignal",
-    "NarrativeProfile",
-    "SymbolicSignal",
-    "TarotSignal",
-    "IChingSignal",
-    "AstrologySignal",
-    "DebateTranscript",
-    "AgentOpinion",
-    "JudgeDecision",
     "TournamentPrediction",
     "TeamFeatures",
     "ReasoningTrace",

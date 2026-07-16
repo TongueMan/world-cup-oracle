@@ -1,5 +1,6 @@
 ﻿import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../lib/api';
+import { completionStatusText, resolveToolIntent } from '../lib/agentResearch';
 import type { KeyboardEvent } from 'react';
 import type {
   AgentCapabilities,
@@ -217,6 +218,7 @@ export function AgentDrawer({ open, sessionKey, context, initialPrompt = '', onC
     const requestSessionKey = sessionKey;
     const requestContext = context;
     const matchAnalysis = Boolean(requestContext.currentMatchId);
+    const toolIntent = resolveToolIntent(requestContext);
     const factsOnly = wantsFactsOnly(message);
     const shouldSearch = !factsOnly && (
       config.searchEnabled
@@ -248,7 +250,7 @@ export function AgentDrawer({ open, sessionKey, context, initialPrompt = '', onC
           history,
           llmConfig: { ...config, searchEnabled: shouldSearch },
           searchMode: shouldSearch ? 'required' : 'local_only',
-          toolIntent: matchAnalysis ? 'match_analysis' : 'general',
+          toolIntent,
         }),
         signal: controller.signal,
       });
@@ -263,12 +265,7 @@ export function AgentDrawer({ open, sessionKey, context, initialPrompt = '', onC
           if (typeof payload.answer === 'string') {
             updateSession(requestSessionKey, (current) => ({ ...current, messages: replaceLastAssistant(current.messages, payload.answer as string) }));
           }
-          const diagnostics = payload.diagnostics as { searchedCount?: number; adoptedCount?: number; filteredCount?: number } | undefined;
-          if (diagnostics?.searchedCount != null) {
-            updateSession(requestSessionKey, { status: `完成：检索 ${diagnostics.searchedCount} 条，采用 ${diagnostics.adoptedCount ?? 0} 条，过滤 ${diagnostics.filteredCount ?? 0} 条。` });
-          } else {
-            updateSession(requestSessionKey, { status: '完成' });
-          }
+          updateSession(requestSessionKey, { status: completionStatusText(payload) });
         },
       });
     } catch (err) {
@@ -499,10 +496,10 @@ function SourceList({ sources }: { sources: AgentSearchResult[] }) {
   );
 }
 
-function ReasoningPanel({ steps, streaming }: { steps: ReasoningStep[]; streaming: boolean }) {
+export function ReasoningPanel({ steps, streaming }: { steps: ReasoningStep[]; streaming: boolean }) {
   const visible = steps.slice(-6);
   return (
-    <details className="agent-reasoning" open>
+    <details className="agent-reasoning">
       <summary>
         推理过程
         {streaming ? <span>分析中</span> : <span>已完成</span>}

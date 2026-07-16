@@ -5,8 +5,15 @@ import type { TournamentPrediction } from '../lib/types';
 import PredictionsPage from './PredictionsPage';
 
 vi.mock('echarts-for-react', () => ({
-  default: ({ option }: { option: { series?: Array<{ type?: string }> } }) => (
-    <div data-chart-type={option.series?.[0]?.type ?? 'unknown'} data-testid="echarts" />
+  default: ({ option }: { option: { series?: Array<{ type?: string }>; xAxis?: { type?: string }; yAxis?: { type?: string }; legend?: { top?: number | string }; grid?: { containLabel?: boolean } } }) => (
+    <div
+      data-chart-type={option.series?.[0]?.type ?? 'unknown'}
+      data-grid-contain-label={String(option.grid?.containLabel ?? false)}
+      data-legend-top={String(option.legend?.top ?? '')}
+      data-testid="echarts"
+      data-x-axis-type={option.xAxis?.type ?? ''}
+      data-y-axis-type={option.yAxis?.type ?? ''}
+    />
   ),
 }));
 
@@ -29,8 +36,6 @@ const semifinalPredictions = [
     extra_time_prob: 0.24,
     penalty_prob: 0.09,
     tactical_summary: '',
-    narrative_summary: '',
-    symbolic_summary: '',
     data_grade: 'C',
     confidence_cap: 0.65,
     missing_fields: ['market_odds', 'confirmed_lineup_or_injuries'],
@@ -73,8 +78,6 @@ const semifinalPredictions = [
     extra_time_prob: 0.23,
     penalty_prob: 0.09,
     tactical_summary: '',
-    narrative_summary: '',
-    symbolic_summary: '',
     data_grade: 'C',
     confidence_cap: 0.65,
     missing_fields: ['market_odds', 'confirmed_lineup_or_injuries'],
@@ -152,14 +155,7 @@ const baseArtifact = {
   runner_up_team_id: null,
   semifinalists: [],
   rational_champion: 'ARG',
-  narrative_champion: null,
-  symbolic_champion: null,
-  narratives: [],
-  symbolic_signals: [],
-  debate_transcripts: [],
   reasoning_traces: [],
-  upset_alerts: [],
-  dark_horses: [],
   data_sources: [],
   champion_path: [],
   path_reconstruction_notes: [],
@@ -179,11 +175,24 @@ const baseArtifact = {
     ],
     figures: [
       { figure_id: 'champion_probability_chart', title: '冠军概率分布', kind: 'echarts', description: '冠军概率榜。' },
+      {
+        figure_id: 'champion_scenario_chart',
+        title: '阿根廷的潜在对手情景',
+        kind: 'champion_scenarios',
+        description: '对手出现概率与该情景下的夺冠概率分开计算。',
+        data: {
+          leader_team_id: 'ARG',
+          scenarios: [
+            { opponent_team_id: 'ESP', encounter_probability: 1, conditional_win_probability: 0.505 },
+            { opponent_team_id: 'FRA', encounter_probability: 0.42, conditional_win_probability: 0.47 },
+          ],
+        },
+      },
     ],
     data_disclosure: '当前质量报告未列出阻断性缺失；实时来源仍可能随赛前信息变化。',
     sections: [
       { title: '预测结论', body: '阿根廷暂居冠军概率首位，估计夺冠概率为 34.0%。', bullets: ['预测起点：当前四强阶段'], kind: 'summary', citations: ['model-1'], figure_refs: ['champion_probability_chart'] },
-      { title: '证据与数据来源', body: '本次报告综合使用本地赛程、模型输出和已通过来源准入的数据模块。', bullets: ['球队实力和进球模型已进入概率。'], kind: 'evidence', citations: ['model-1'], figure_refs: [] },
+      { title: '证据与数据来源', body: '本次报告综合使用本地赛程、模型输出和已通过来源准入的数据模块。', bullets: ['球队实力和进球模型已进入概率。'], kind: 'evidence', citations: ['model-1'], figure_refs: ['champion_scenario_chart'] },
     ],
     caveats: ['概率不是确定赛果。', '不构成投注建议。'],
     source_artifact_version: '4.0.0',
@@ -236,10 +245,24 @@ describe('PredictionsPage', () => {
     expect(screen.getByText('预测结论')).toBeInTheDocument();
     expect(screen.getByText('参考来源')).toBeInTheDocument();
     expect(screen.getAllByText('完整预测').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('echarts')).toHaveAttribute('data-chart-type', 'pie');
+    expect(screen.getAllByTestId('echarts').some((node) => node.getAttribute('data-chart-type') === 'pie')).toBe(true);
     expect(screen.queryByRole('button', { name: '进决赛' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '进四强' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '进八强' })).not.toBeInTheDocument();
+  });
+
+  it('renders scenario report figures with a non-overlapping horizontal layout', async () => {
+    render(<MemoryRouter initialEntries={['/predictions']}><PredictionsPage /></MemoryRouter>);
+
+    expect(await screen.findByText('阿根廷的潜在对手情景')).toBeInTheDocument();
+    const scenarioChart = screen.getAllByTestId('echarts').find((node) =>
+      node.getAttribute('data-x-axis-type') === 'value'
+      && node.getAttribute('data-y-axis-type') === 'category'
+      && node.getAttribute('data-legend-top') === '0'
+      && node.getAttribute('data-grid-contain-label') === 'true',
+    );
+
+    expect(scenarioChart).toBeTruthy();
   });
 
   it('rejects an old cached report instead of rebuilding public reasoning in the browser', async () => {

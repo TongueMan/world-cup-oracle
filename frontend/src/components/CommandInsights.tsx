@@ -8,11 +8,9 @@ interface CommandInsightsProps {
 
 export function CommandInsights({ prediction }: CommandInsightsProps) {
   const probabilities = prediction.champion_probabilities.slice(0, 8);
-  const darkHorses = prediction.dark_horses.slice(0, 5);
-  const upsets = prediction.upset_alerts.slice(0, 5);
 
   return (
-    <section className="grid gap-4 lg:grid-cols-3">
+    <section>
       <Panel title="冠军概率榜">
         <div className="space-y-2">
           {probabilities.map((item) => (
@@ -23,33 +21,6 @@ export function CommandInsights({ prediction }: CommandInsightsProps) {
               width={item.probability}
             />
           ))}
-        </div>
-      </Panel>
-      <Panel title="黑马雷达">
-        <div className="space-y-2">
-          {darkHorses.map((item) => {
-            const teamId = String(item.team_id ?? '');
-            const score = Number(item.score ?? 0);
-            return (
-              <RankRow
-                key={teamId}
-                label={getTeamName(teamId)}
-                value={score.toFixed(2)}
-                width={score}
-              />
-            );
-          })}
-        </div>
-      </Panel>
-      <Panel title="爆冷预警">
-        <div className="space-y-2">
-          {upsets.map((item) => {
-            const matchId = String(item.match_id ?? '');
-            const score = Number(item.upset_index ?? 0);
-            return (
-              <RankRow key={matchId} label={matchId} value={score.toFixed(2)} width={score} />
-            );
-          })}
         </div>
       </Panel>
     </section>

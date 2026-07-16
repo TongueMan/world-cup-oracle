@@ -8,12 +8,11 @@ from datetime import datetime, timezone
 from wcpa.schemas.team import Team
 from wcpa.schemas.match import Match, MatchResult
 from wcpa.schemas.prediction import MatchPrediction
-from wcpa.schemas.tournament import GroupStanding, Bracket
+from wcpa.schemas.tournament import GroupStanding
 from wcpa.schemas.artifact import TournamentPrediction, TeamFeatures
 from wcpa.data.repositories.fixture_loader import (
     load_teams,
     load_matches,
-    load_narratives,
 )
 from wcpa.features.feature_builder import build_features
 from wcpa.prediction.match_predictor import BaselineMatchPredictor
@@ -32,7 +31,7 @@ class TournamentSimulator:
     用 ``TournamentSimulator(seed=42).run()`` 运行完整预测流水线。
     """
 
-    def __init__(self, seed: int = 42, mode: str = "balanced"):
+    def __init__(self, seed: int = 42, mode: str = "professional"):
         self.seed = seed
         self.mode = mode
         self.rng = create_rng(seed)
@@ -43,7 +42,6 @@ class TournamentSimulator:
         # 1. 加载数据
         teams = load_teams()
         matches = load_matches()
-        narratives = load_narratives()
 
         team_map: dict[str, Team] = {t.team_id: t for t in teams}
 
@@ -169,7 +167,7 @@ class TournamentSimulator:
             edition="2026",
             seed=self.seed,
             mode=self.mode,
-            artifact_version="1.0.0",
+            artifact_version="6.0.0",
             config_hash="",
             generated_at=datetime.now(timezone.utc),
             group_standings=all_standings,
@@ -180,9 +178,6 @@ class TournamentSimulator:
             runner_up_team_id=bracket.runner_up_team_id,
             semifinalists=semifinalists,
             rational_champion=bracket.champion_team_id,
-            narrative_champion=None,
-            symbolic_champion=None,
-            narratives=narratives,
         )
 
         return artifact

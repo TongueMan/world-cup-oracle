@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from urllib.parse import urlparse
 from typing import Any
 
@@ -11,6 +11,7 @@ PREFERRED_DOMAINS = {
     "fifa.com",
     "espn.com",
     "bbc.com",
+    "bbc.co.uk",
     "reuters.com",
     "theguardian.com",
     "skysports.com",
@@ -146,12 +147,31 @@ def score_match_relevance(source: QualifiedSource, context: dict[str, Any]) -> t
     weather_hit = any(term in haystack for term in ("weather", "forecast", "temperature", "rain", "wind", "天气", "降雨", "气温", "风速"))
     pitch_hit = any(term in haystack for term in ("pitch", "grass", "turf", "surface", "草皮", "天然草", "人工草"))
     bracket_hit = any(term in haystack for term in ("bracket", "knockout", "round of 16", "quarterfinal", "semifinal", "final", "淘汰赛", "晋级路径", "决赛"))
+    post_match_hit = any(
+        term in haystack
+        for term in (
+            "match report", "post-match", "post match", "as it happened", "full-time", "final score",
+            "reaction", "highlights", "goals", "scorer", "scored", "beat", "beaten", "defeated",
+            "won", "victory", "进球", "战报", "赛后", "击败", "战胜", "晋级",
+        )
+    )
     stage = str(match.get("stage") or "")
     stage_hit = bool(stage and stage.casefold() in haystack)
     score = 0.0
     environment_intent = intent == "weather_environment" or weather_hit or pitch_hit
-    bracket_intent = bool(context.get("bracket", {}).get("has_placeholders")) or bracket_hit
-    if environment_intent:
+    bracket_intent = bool(context.get("bracket", {}).get("has_placeholders"))
+    if intent == "post_match_report":
+        if home_hit:
+            score += 0.25
+        if away_hit:
+            score += 0.25
+        if worldcup_hit:
+            score += 0.1
+        if post_match_hit:
+            score += 0.3
+        if stage_hit:
+            score += 0.05
+    elif environment_intent:
         if venue_hit:
             score += 0.45
         if weather_hit or pitch_hit:
@@ -187,7 +207,11 @@ def score_match_relevance(source: QualifiedSource, context: dict[str, Any]) -> t
     if source.source_type == "social":
         score -= 0.15
     score = round(max(0.0, min(1.0, score)), 4)
-    if environment_intent and venue_hit:
+    if intent == "post_match_report" and home_hit and away_hit and post_match_hit:
+        reason = "匹配双方球队和赛后事件语境"
+    elif intent == "post_match_report" and home_hit and away_hit:
+        reason = "匹配双方球队，但缺少明确赛后事件信号"
+    elif environment_intent and venue_hit:
         reason = "匹配场馆/环境问题"
     elif environment_intent and (weather_hit or pitch_hit):
         reason = "匹配天气或草皮信息"
@@ -205,20 +229,9 @@ def score_match_relevance(source: QualifiedSource, context: dict[str, Any]) -> t
 
 
 def source_with_relevance(source: QualifiedSource, context: dict[str, Any], excerpt: str = "") -> QualifiedSource:
-    score, reason = score_match_relevance(source, context)
-    return QualifiedSource(
-        title=source.title,
-        url=source.url,
-        domain=source.domain,
-        snippet=source.snippet,
-        published_at=source.published_at,
-        source_quality_score=source.source_quality_score,
-        raw=source.raw,
-        relevance_score=score,
-        source_type=source.source_type,
-        adoption_reason=reason,
-        excerpt=excerpt[:1200],
-    )
+    candidate = replace(source, excerpt=excerpt[:3600])
+    score, reason = score_match_relevance(candidate, context)
+    return replace(candidate, relevance_score=score, adoption_reason=reason)
 
 
 def _venue_terms(environment: dict[str, Any]) -> list[str]:
@@ -245,6 +258,7 @@ def _team_terms(match: dict[str, Any], side: str) -> list[str]:
         "COL": ["Colombia", "哥伦比亚"],
         "GHA": ["Ghana", "加纳"],
         "ARG": ["Argentina", "阿根廷"],
+        "ENG": ["England", "英格兰"],
         "FRA": ["France", "法国"],
         "BRA": ["Brazil", "巴西"],
         "NOR": ["Norway", "挪威"],
@@ -255,4 +269,9 @@ def _team_terms(match: dict[str, Any], side: str) -> list[str]:
         "ESP": ["Spain", "西班牙"],
     }
     terms.extend(aliases.get(team_id, []))
+    raw_key = raw.casefold()
+    for alias_values in aliases.values():
+        if any(raw_key == alias.casefold() for alias in alias_values):
+            terms.extend(alias_values)
+            break
     return [term for term in terms if term and not term.startswith(("W", "L"))]

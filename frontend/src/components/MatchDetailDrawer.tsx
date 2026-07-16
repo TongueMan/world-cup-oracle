@@ -54,8 +54,6 @@ export function MatchDetailDrawer({
         if (!cancelled && prediction) {
           setDetail({
             prediction,
-            symbolic_signal: null,
-            debate_transcript: null,
           });
         }
       })
@@ -70,8 +68,6 @@ export function MatchDetailDrawer({
   if (!matchId) return null;
 
   const activePrediction = detail?.prediction ?? prediction;
-  const symbolic = detail?.symbolic_signal;
-  const debate = detail?.debate_transcript;
 
   return (
     <div
@@ -114,12 +110,9 @@ export function MatchDetailDrawer({
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-slate-400">Judge 胜者</div>
+                  <div className="text-xs text-slate-400">预测胜者</div>
                   <div className="text-xl font-bold text-emerald-700">
-                    {getTeamName(
-                      debate?.judge_decision?.winner_team_id ??
-                        activePrediction.winner_team_id,
-                    )}
+                    {getTeamName(activePrediction.winner_team_id)}
                   </div>
                 </div>
               </div>
@@ -138,69 +131,7 @@ export function MatchDetailDrawer({
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
-              <TextPanel title="理性/战术" text={activePrediction.tactical_summary} />
-              <TextPanel title="叙事" text={activePrediction.narrative_summary} />
-              <TextPanel title="象征" text={activePrediction.symbolic_summary} />
-            </div>
-
-            {symbolic && (
-              <div className="grid gap-3 md:grid-cols-3">
-                <TextPanel
-                  title="塔罗"
-                  text={[
-                    ...(symbolic.tarot?.home_cards ?? []),
-                    ...(symbolic.tarot?.away_cards ?? []),
-                  ].join(' / ')}
-                />
-                <TextPanel
-                  title="卦象"
-                  text={`${symbolic.iching?.gua ?? '未知'} · 风险 ${Math.round(
-                    (symbolic.iching?.upset_risk ?? 0) * 100,
-                  )}%`}
-                />
-                <TextPanel
-                  title="星象"
-                  text={`火 ${pct(symbolic.astrology?.fire_energy)} 土 ${pct(
-                    symbolic.astrology?.earth_energy,
-                  )} 风 ${pct(symbolic.astrology?.air_energy)} 水 ${pct(
-                    symbolic.astrology?.water_energy,
-                  )}`}
-                />
-              </div>
-            )}
-
-            {debate && (
-              <div className="rounded-lg border border-slate-200 p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h4 className="font-semibold text-slate-800">Agent 辩论</h4>
-                  <span className="rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-600">
-                    {debate.judge_decision?.decision_type ?? activePrediction.consensus_type}
-                  </span>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {debate.opinions.map((opinion) => (
-                    <div key={opinion.agent} className="rounded-md bg-slate-50 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="font-medium text-slate-800">{opinion.agent}</div>
-                        <div className="text-xs text-slate-500">
-                          {Math.round(opinion.confidence * 100)}%
-                        </div>
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        支持 {getTeamName(opinion.support_team_id)}
-                      </div>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{opinion.summary}</p>
-                    </div>
-                  ))}
-                </div>
-                {debate.judge_decision && (
-                  <div className="mt-3 rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">
-                    {debate.judge_decision.summary}
-                  </div>
-                )}
-              </div>
-            )}
+            <TextPanel title="战术分析" text={activePrediction.tactical_summary} />
           </div>
         )}
       </div>
@@ -224,8 +155,4 @@ function TextPanel({ title, text }: { title: string; text: string }) {
       <p className="mt-1 text-sm leading-6 text-slate-700">{text || '暂无结构化信号'}</p>
     </div>
   );
-}
-
-function pct(value: number | undefined): string {
-  return `${Math.round((value ?? 0) * 100)}%`;
 }

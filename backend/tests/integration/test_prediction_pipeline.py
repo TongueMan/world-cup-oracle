@@ -1,11 +1,10 @@
 """预测流水线集成测试。"""
-import pytest
 from wcpa.simulation.tournament_simulator import TournamentSimulator
 
 
 def test_full_pipeline():
     """从 fixture 到冠军输出的完整流程。"""
-    sim = TournamentSimulator(seed=42, mode="balanced")
+    sim = TournamentSimulator(seed=42, mode="professional")
     artifact = sim.run()
 
     # 冠军存在

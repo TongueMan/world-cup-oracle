@@ -155,8 +155,6 @@ class MatchPrediction(WCPABaseModel):
     away_advancement_prob: float = Field(default=0.0, ge=0, le=1)
 
     tactical_summary: str = ""
-    narrative_summary: str = ""
-    symbolic_summary: str = ""
 
     @model_validator(mode="after")
     def validate_probability_sums(self) -> "MatchPrediction":

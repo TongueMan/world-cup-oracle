@@ -34,6 +34,26 @@ def _fake_run() -> BingKnowledgeRun:
                     "raw_label": "查看 巴西 对阵 日本 的详细信息",
                     "fetched_at": "2026-07-03T00:00:00+00:00",
                 }
+                ,
+                {
+                    "match_id": "SportRadar_Soccer_InternationalWorldCup_2026_Game_2",
+                    "stage": "SF",
+                    "stage_label": "半决赛",
+                    "group": None,
+                    "date_label": "今天",
+                    "kickoff_label": "今天",
+                    "home_name": "英格兰",
+                    "away_name": "阿根廷",
+                    "home_team_id": "ENG",
+                    "away_team_id": "ARG",
+                    "home_score": 1,
+                    "away_score": 2,
+                    "winner_name": "阿根廷",
+                    "status": "final",
+                    "source_url": "https://www.bing.com/game/2",
+                    "raw_label": "查看 英格兰 对阵 阿根廷 的详细信息",
+                    "fetched_at": "2026-07-03T00:00:00+00:00",
+                }
             ],
             "bracket": [
                 {
@@ -88,6 +108,15 @@ def test_normalize_bing_run_keeps_bracket_placeholders_traceable():
     assert "schedule_card_missing" in match["parse_warnings"]
 
 
+def test_normalize_bing_run_marks_date_without_clock_as_imprecise():
+    normalized = normalize_bing_run(_fake_run())
+
+    match = next(row for row in normalized["matches"] if row["match_id"].endswith("_Game_2"))
+
+    assert "kickoff_clock_time_missing" in match["parse_warnings"]
+    assert match["date_confidence"] == "medium"
+
+
 def test_team_aliases_normalize_to_same_team_id():
     teams = normalize_teams(
         [
@@ -100,4 +129,3 @@ def test_team_aliases_normalize_to_same_team_id():
     usa = next(team for team in teams if team["team_id"] == "USA")
     assert "美国" in usa["aliases"]
     assert "United States" in usa["aliases"]
-

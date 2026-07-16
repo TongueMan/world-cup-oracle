@@ -35,6 +35,7 @@ def evaluate_research_answer(
     match_required: bool = True,
     structure_required: bool = True,
     concise_allowed: bool = False,
+    post_match_required: bool = False,
 ) -> QualityReport:
     dimensions: dict[str, int] = {}
     issues: list[str] = []
@@ -46,9 +47,43 @@ def evaluate_research_answer(
     dimensions["fact_safety"] = _fact_safety(answer, issues)
     dimensions["readability"] = _readability(answer, issues, concise_allowed)
 
+    post_match_ok = _post_match_contract(answer, sources, issues) if post_match_required else True
     total = sum(dimensions.values())
-    passed = total >= min_total and not _has_forbidden(answer)
+    passed = total >= min_total and not _has_forbidden(answer) and post_match_ok
     return QualityReport(total=total, dimensions=dimensions, passed=passed, issues=issues)
+
+
+def _post_match_contract(answer: str, sources: list[dict[str, Any]], issues: list[str]) -> bool:
+    prediction_markers = (
+        "常规时间概率",
+        "最终晋级",
+        "期望进球",
+        "模型推断",
+        "neutral_prior",
+        "strength:",
+        "预测对象",
+        "赛前概率判断",
+    )
+    marker_count = sum(marker.casefold() in answer.casefold() for marker in prediction_markers)
+    if marker_count >= 2:
+        issues.append("赛后复盘错误输出了赛前预测概率或模型权重。")
+        return False
+    if not sources:
+        boundary_terms = ("没有取得", "缺少", "无法确认", "不会根据比分", "不会编造")
+        if any(term in answer for term in boundary_terms):
+            return True
+        issues.append("缺少赛后来源时，回答没有明确拒绝推测比赛过程。")
+        return False
+    required_groups = (
+        ("进球", "关键事件", "时间线", "分钟"),
+        ("比赛如何展开", "比赛走势", "上半场", "下半场", "攻守"),
+        ("换人", "调整", "胜负手"),
+    )
+    missing = [group for group in required_groups if not any(term in answer for term in group)]
+    if missing:
+        issues.append("赛后复盘缺少关键事件、比赛走势或双方调整。")
+        return False
+    return True
 
 
 def _match_accuracy(answer: str, context: dict[str, Any], issues: list[str], match_required: bool) -> int:

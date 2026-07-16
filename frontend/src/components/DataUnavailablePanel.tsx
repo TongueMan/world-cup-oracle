@@ -32,7 +32,7 @@ export function DataUnavailablePanel({ status, error }: DataUnavailablePanelProp
             <p className="mt-4 max-w-3xl text-sm leading-7 text-white/74">
               {primaryMessage}
               当前正式数据入口只接受 Bing Sports 世界杯页面。比赛、赛程表、资讯、排名、统计信息会先落成知识库；
-              如果字段不足，页面停在这里，而不是生成模拟冠军或假辩论。
+              如果字段不足，页面停在这里，而不是生成模拟冠军或无依据结论。
             </p>
           </div>
 

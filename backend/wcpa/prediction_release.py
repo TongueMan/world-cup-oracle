@@ -304,7 +304,7 @@ class StagePredictionEngine:
         )
         actual_champion = _actual_champion(schedule)
         return TournamentPrediction(
-            edition="2026", seed=self.seed, mode="professional", artifact_version="5.0.0",
+            edition="2026", seed=self.seed, mode="professional", artifact_version="6.0.0",
             artifact_id=artifact_id, run_id=run_id, publication_status="candidate",
             probability_profile="professional", simulation_count=self.simulations,
             generated_at=generated_at, input_data_as_of=state.as_of_time,

@@ -15,28 +15,10 @@ interface ChampionCardData {
 export function ChampionOverview({ prediction }: ChampionOverviewProps) {
   const cards: ChampionCardData[] = [
     {
-      label: '综合冠军',
-      teamId: prediction.champion_team_id,
-      accentClass: 'border-amber-400 bg-amber-50',
-      icon: '🏆',
-    },
-    {
-      label: '理性冠军',
+      label: '冠军预测',
       teamId: prediction.rational_champion,
       accentClass: 'border-blue-400 bg-blue-50',
       icon: '📊',
-    },
-    {
-      label: '叙事冠军',
-      teamId: prediction.narrative_champion,
-      accentClass: 'border-purple-400 bg-purple-50',
-      icon: '📖',
-    },
-    {
-      label: '象征冠军',
-      teamId: prediction.symbolic_champion,
-      accentClass: 'border-teal-400 bg-teal-50',
-      icon: '🔮',
     },
   ];
 
@@ -45,10 +27,9 @@ export function ChampionOverview({ prediction }: ChampionOverviewProps) {
 
   return (
     <section>
-      <h2 className="mb-4 text-xl font-bold text-slate-800">冠军预言</h2>
+      <h2 className="mb-4 text-xl font-bold text-slate-800">冠军预测</h2>
 
-      {/* 四张冠军卡片 */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => {
           const teamName = getTeamName(card.teamId);
           const isPending = !card.teamId;

@@ -1,6 +1,0 @@
-{
-  "fire": {"energy_keywords":["快节奏","进攻性强"],"intensity_range":[0.5,0.9]},
-  "earth": {"energy_keywords":["稳健","防守反击"],"intensity_range":[0.3,0.7]},
-  "air": {"energy_keywords":["灵活","战术变化"],"intensity_range":[0.4,0.8]},
-  "water": {"energy_keywords":["情绪波动","直觉性"],"intensity_range":[0.4,0.8]}
-}

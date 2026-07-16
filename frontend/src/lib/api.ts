@@ -113,8 +113,6 @@ export const api = {
   getGroups: () => fetchJSON<GroupStanding[]>('/groups'),
   getGroup: (group: string) => fetchJSON<GroupStanding>(`/groups/${group}`),
   getMatch: (matchId: string) => fetchJSON<MatchDetail>(`/matches/${matchId}`),
-  getDebate: (matchId: string) => fetchJSON(`/agents/debate/${matchId}`),
-  generateDebate: (matchId: string) => postJSON(`/agents/debate/match?match_id=${matchId}`),
   getAgentCapabilities: () => fetchJSON<AgentCapabilities>('/agents/capabilities'),
   testAgentProvider: (llmConfig: AgentLLMConfig) =>
     postBodyJSON<{ ok: boolean; message: string }>('/agents/providers/test', { llmConfig }),

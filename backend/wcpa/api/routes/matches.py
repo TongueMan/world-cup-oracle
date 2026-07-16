@@ -7,7 +7,7 @@ router = APIRouter()
 
 @router.get("/{match_id}")
 async def get_match(match_id: str):
-    """返回单场预测详情，包含象征信号和 Agent 辩论。"""
+    """返回已验证预测产物中的单场概率详情。"""
     artifact = get_prediction_artifact(strict=True)
     if artifact is None:
         raise HTTPException(status_code=409, detail="No verified prediction found.")
@@ -18,19 +18,9 @@ async def get_match(match_id: str):
             break
     if prediction is None:
         raise HTTPException(status_code=404, detail=f"Match {match_id} not found.")
-    symbolic = next(
-        (signal for signal in artifact.symbolic_signals if signal.match_id == match_id),
-        None,
-    )
-    debate = next(
-        (transcript for transcript in artifact.debate_transcripts if transcript.match_id == match_id),
-        None,
-    )
     return {
         "artifact_id": artifact.artifact_id,
         "publication_status": artifact.publication_status,
         "data_verified": artifact.data_verified,
         "prediction": prediction.model_dump(),
-        "symbolic_signal": symbolic.model_dump() if symbolic else None,
-        "debate_transcript": debate.model_dump() if debate else None,
     }

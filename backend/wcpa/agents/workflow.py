@@ -7,11 +7,6 @@ class PipelineAgent(Protocol):
     def execute(self, *args, **kwargs):
         ...
 
-class AnalysisAgent(Protocol):
-    """分析人格 Agent 接口。"""
-    def analyze(self, *args, **kwargs):
-        ...
-
 class Workflow:
     """Agent 工作流编排器 — MVP: pass-through。"""
     
@@ -24,12 +19,3 @@ class Workflow:
         self.tournament_simulator = None  # TODO
         self.reasoning_writer = None  # TODO
         self.viz_builder = None      # TODO
-        
-        # 7 个分析 Agent
-        self.data_analyst = None     # TODO
-        self.tactical_analyst = None # TODO
-        self.narrative_agent = None  # TODO
-        self.tarot_agent = None      # TODO
-        self.iching_agent = None     # TODO
-        self.astrology_agent = None  # TODO
-        self.judge_agent = None      # TODO

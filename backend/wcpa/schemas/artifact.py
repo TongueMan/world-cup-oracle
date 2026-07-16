@@ -11,9 +11,6 @@ from pydantic import ConfigDict, Field
 from wcpa.schemas import WCPABaseModel
 from wcpa.schemas.tournament import GroupStanding, Bracket
 from wcpa.schemas.prediction import MatchPrediction
-from wcpa.schemas.debate import DebateTranscript
-from wcpa.schemas.symbolic import SymbolicSignal
-from wcpa.schemas.narrative import NarrativeProfile
 
 
 class ReasoningTrace(WCPABaseModel):
@@ -194,13 +191,13 @@ class TournamentPrediction(WCPABaseModel):
     """最终预测 artifact — API 和报告的唯一数据源。
 
     包含完整赛事预测结果：小组积分、淘汰赛对阵、单场预测、
-    三轨道冠军、叙事画像、象征信号、辩论记录和推理链路。
+    冠军概率、数据来源、质量状态和推理链路。
     """
 
     edition: str = "2026"
     seed: int = 42
     mode: str = "balanced"
-    artifact_version: str = "1.0.0"
+    artifact_version: str = "6.0.0"
     config_hash: str = ""  # 用于可复现性校验
     generated_at: Optional[datetime] = None
     artifact_id: str = ""
@@ -226,19 +223,12 @@ class TournamentPrediction(WCPABaseModel):
     runner_up_team_id: Optional[str] = None
     semifinalists: list[str] = []
 
-    # 三轨道冠军（MVP 阶段只有理性冠军）
+    # 数据与概率模型给出的冠军预测
     rational_champion: Optional[str] = None
-    narrative_champion: Optional[str] = None
-    symbolic_champion: Optional[str] = None
 
     # 附加数据
-    narratives: list[NarrativeProfile] = []
-    symbolic_signals: list[SymbolicSignal] = []
-    debate_transcripts: list[DebateTranscript] = []
     reasoning_traces: list[ReasoningTrace] = []
     champion_probabilities: list[ChampionProbability] = []
-    upset_alerts: list[dict] = []
-    dark_horses: list[dict] = []
     data_sources: list[DataSourceStatus] = []
     champion_path: list[dict] = []
     path_reconstruction_notes: list[str] = []

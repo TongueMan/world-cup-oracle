@@ -226,8 +226,11 @@ def normalize_bing_run(run: BingKnowledgeRun) -> dict[str, list[dict[str, Any]]]
             row.get("kickoff_label"),
             fetched_at,
         )
+        kickoff_has_clock = _has_explicit_clock_time(row.get("date_label"), row.get("kickoff_label"))
         if not kickoff_time and row.get("status") != "final":
             warnings.append("kickoff_time_unparsed")
+        elif kickoff_time and not kickoff_has_clock:
+            warnings.append("kickoff_clock_time_missing")
         home_team_id = _normalize_team_id(row.get("home_name"), row.get("home_team_id"))
         away_team_id = _normalize_team_id(row.get("away_name"), row.get("away_team_id"))
         winner_name = row.get("winner_name") or bracket.get("winner_name")
@@ -239,7 +242,7 @@ def normalize_bing_run(run: BingKnowledgeRun) -> dict[str, list[dict[str, Any]]]
             kickoff_time=kickoff_time,
             kickoff_label=kickoff_label,
             resolved_kickoff_date=kickoff_time.date().isoformat() if kickoff_time else None,
-            date_confidence="high" if kickoff_time else "low",
+            date_confidence="high" if kickoff_time and kickoff_has_clock else ("medium" if kickoff_time else "low"),
             data_as_of=fetched_at,
             home_team_id=home_team_id,
             away_team_id=away_team_id,
@@ -278,6 +281,9 @@ def normalize_bing_run(run: BingKnowledgeRun) -> dict[str, list[dict[str, Any]]]
             continue
         warnings = ["schedule_card_missing"]
         kickoff_time = _parse_kickoff_time(row.get("date_label"), row.get("time_label"), run.fetched_at)
+        kickoff_has_clock = _has_explicit_clock_time(row.get("date_label"), row.get("time_label"))
+        if kickoff_time and not kickoff_has_clock:
+            warnings.append("kickoff_clock_time_missing")
         matches[match_id] = WorldCupMatch(
             match_id=match_id,
             stage=row.get("round") or "",
@@ -285,7 +291,7 @@ def normalize_bing_run(run: BingKnowledgeRun) -> dict[str, list[dict[str, Any]]]
             kickoff_time=kickoff_time,
             kickoff_label=" ".join([str(row.get("date_label") or ""), str(row.get("time_label") or "")]).strip(),
             resolved_kickoff_date=kickoff_time.date().isoformat() if kickoff_time else None,
-            date_confidence="high" if kickoff_time else "low",
+            date_confidence="high" if kickoff_time and kickoff_has_clock else ("medium" if kickoff_time else "low"),
             data_as_of=run.fetched_at,
             home_team_id=_normalize_team_id(row.get("home_name"), None),
             away_team_id=_normalize_team_id(row.get("away_name"), None),
@@ -434,11 +440,16 @@ def _parse_kickoff_time(
     return datetime(2026, month, day, 0, 0, tzinfo=CHINA_TZ)
 
 
+def _has_explicit_clock_time(date_label: str | None, kickoff_label: str | None) -> bool:
+    text = " ".join([date_label or "", kickoff_label or ""])
+    return bool(re.search(r"\b\d{1,2}:\d{2}\b", text))
+
+
 def _with_date_metadata(row: dict[str, Any]) -> dict[str, Any]:
     kickoff = row.get("kickoff_time")
     result = dict(row)
-    result["resolved_kickoff_date"] = str(kickoff)[:10] if kickoff else None
-    result["date_confidence"] = "high" if kickoff else "low"
+    result["resolved_kickoff_date"] = row.get("resolved_kickoff_date") or (str(kickoff)[:10] if kickoff else None)
+    result["date_confidence"] = row.get("date_confidence") or ("high" if kickoff else "low")
     result["data_as_of"] = row.get("fetched_at")
     return result
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent }
 import { AgentDrawer } from './components/AgentDrawer';
 import { AppHeader } from './components/AppHeader';
 import { api } from './lib/api';
+import { formatMatchTime } from './lib/matchTime';
 import type {
   AgentPageContext,
   WorldCupHistoryEdition,
@@ -825,15 +826,6 @@ function parseDateFromLabel(label: string | null | undefined) {
   return new Date(2026, Number(match[1]) - 1, Number(match[2]));
 }
 
-function formatMatchTime(match: WorldCupMatch) {
-  const normalized = normalizeRelativeKickoffLabel(match.kickoff_label);
-  if (normalized) {
-    const time = normalized.match(/\d{1,2}:\d{2}/)?.[0];
-    if (time) return time;
-  }
-  return formatDateTime(match.kickoff_time) || normalized || match.kickoff_label || '';
-}
-
 function normalizeRelativeKickoffLabel(label: string | null | undefined) {
   if (!label) return '';
   const relative = label.match(/^(昨天|今天|明天)(.*)$/);
@@ -1265,20 +1257,6 @@ function shortMatchId(matchId: string) {
   return matchId.replace('SportRadar_Soccer_InternationalWorldCup_2026_Game_', 'W');
 }
 
-function formatDateTime(value: string | null | undefined) {
-  if (!value) return '';
-  try {
-    return new Date(value).toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return value;
-  }
-}
-
 function defaultAgentContext(activeTab: TabKey): AgentPageContext {
   return {
     currentPage: 'worldcup-dashboard',
@@ -1467,7 +1445,7 @@ function matchAnalysisPrompt(match: WorldCupMatch) {
   if (match.status !== 'complete' && match.status !== 'final') {
     return '请联网检索后做这场未赛比赛的赛前预测：给出胜负倾向、可能比分、关键变量、风险和需要确认的信息。';
   }
-  return '请分析这场比赛。';
+  return '请联网检索权威赛后战报，详细复盘这场比赛：按时间顺序说明进球和关键事件，分析双方攻守变化、换人调整与胜负手，并给每组赛况事实标注来源。不要根据比分或球队印象推测比赛过程。';
 }
 
 function hasPlaceholderTeam(match: WorldCupMatch) {
